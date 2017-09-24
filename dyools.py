@@ -3,14 +3,13 @@
 import click
 import sys
 
-__VERSION__ = '0.1.0'
+__VERSION__ = '0.1.1'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
 
 
 class Logger(object):
-
     def info(self, msg):
         click.echo(msg)
 
@@ -30,9 +29,13 @@ class Logger(object):
         click.secho(msg, fg='red')
         sys.exit(-1)
 
+    def title(self, msg):
+        click.secho(msg, fg='white', bold=True)
+
 
 if __name__ == '__main__':
     l = Logger()
+    l.title('Title')
     l.info('Info')
     l.warn('Warn')
     l.debug('Debug')
