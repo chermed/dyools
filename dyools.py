@@ -1,12 +1,42 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import os
+from contextlib import contextmanager
+
 import click
 import sys
 
-__VERSION__ = '0.1.1'
+__VERSION__ = '0.2.0'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
+
+
+class Path(object):
+    @classmethod
+    @contextmanager
+    def chdir(cls, path):
+        try:
+            origin = os.getcwd()
+            os.chdir(path)
+            yield
+        except Exception as e:
+            raise e
+        finally:
+            os.chdir(origin)
+
+    @classmethod
+    def subpaths(self, path):
+        elements = []
+        res = [x for x in path.split(os.path.sep) if x]
+        res.reverse()
+        while res:
+            item = res.pop()
+            if elements:
+                elements.append(os.path.join(elements[-1], item))
+            else:
+                elements = [item]
+        return elements
 
 
 class Logger(object):
@@ -35,11 +65,19 @@ class Logger(object):
 
 if __name__ == '__main__':
     l = Logger()
-    l.title('Title')
-    l.info('Info')
-    l.warn('Warn')
-    l.debug('Debug')
-    l.success('Success')
-    l.code('Code')
-    l.error('Error')
-    l.error('Ooops')
+    # l.title('Title')
+    # l.info('Info')
+    # l.warn('Warn')
+    # l.debug('Debug')
+    # l.success('Success')
+    # l.code('Code')
+    #
+    # l.info(os.getcwd())
+    # with Path.chdir('/'):
+    #     l.warn(os.getcwd())
+    # l.info(os.getcwd())
+
+
+    l.success(Path.subpaths('/hh/k/l/mmmmmm/TTT'))
+    #l.error('Error')
+    #l.error('Ooops')
