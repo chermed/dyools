@@ -6,7 +6,7 @@ from contextlib import contextmanager
 import click
 import sys
 
-__VERSION__ = '0.2.0'
+__VERSION__ = '0.2.1'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -26,17 +26,18 @@ class Path(object):
             os.chdir(origin)
 
     @classmethod
-    def subpaths(self, path):
+    def subpaths(self, path, isfile=False):
         elements = []
+        sep = os.path.sep if path.startswith(os.path.sep) else ''
         res = [x for x in path.split(os.path.sep) if x]
         res.reverse()
         while res:
             item = res.pop()
             if elements:
-                elements.append(os.path.join(elements[-1], item))
+                elements.append(os.path.join(sep, elements[-1], item))
             else:
-                elements = [item]
-        return elements
+                elements = [os.path.join(sep, item)]
+        return elements if not isfile else elements[:-1]
 
 
 class Logger(object):
@@ -78,6 +79,7 @@ if __name__ == '__main__':
     # l.info(os.getcwd())
 
 
-    l.success(Path.subpaths('/hh/k/l/mmmmmm/TTT'))
-    #l.error('Error')
-    #l.error('Ooops')
+    from pprint import pprint
+    pprint(Path.subpaths('/hh/k/l/mmmmmm/TTT', True))
+    # l.error('Error')
+    # l.error('Ooops')
