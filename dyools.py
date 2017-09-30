@@ -6,10 +6,55 @@ from contextlib import contextmanager
 import click
 import sys
 
-__VERSION__ = '0.2.1'
+__VERSION__ = '0.2.2'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
+
+
+class Eval(object):
+    def __init__(self, data, context):
+        self.data = data
+        self.context = context or {}
+
+    def eval(self, eval_result=True):
+        def parse(value, ctx):
+            if isinstance(value, list):
+                return [parse(item, ctx) for item in value]
+            elif isinstance(value, dict):
+                _d = {}
+                for _k, _v in value.items():
+                    _d[_k] = parse(_v, ctx)
+                return _d
+            elif isinstance(value, basestring):
+                origin = value
+                res = value.format(**ctx)
+                if origin != res and eval_result:
+                    try:
+                        res = eval(res, ctx)
+                    except Exception as e:
+                        pass
+                return res
+            else:
+                return value
+
+        return parse(self.data, self.context)
+
+
+class SFTP(object):
+    def __init__(self, sftp):
+        self.sftp = sftp
+
+    @contextmanager
+    def chdir(self, path):
+        try:
+            origin = self.sftp.getcwd()
+            self.sftp.chdir(path)
+            yield
+        except Exception as e:
+            raise e
+        finally:
+            self.sftp.chdir(origin)
 
 
 class Path(object):
@@ -65,7 +110,7 @@ class Logger(object):
 
 
 if __name__ == '__main__':
-    l = Logger()
+    # l = Logger()
     # l.title('Title')
     # l.info('Info')
     # l.warn('Warn')
@@ -79,7 +124,24 @@ if __name__ == '__main__':
     # l.info(os.getcwd())
 
 
-    from pprint import pprint
-    pprint(Path.subpaths('/hh/k/l/mmmmmm/TTT', True))
+    # from pprint import pprint
+    #
+    # pprint(Path.subpaths('/hh/k/l/mmmmmm/TTT', True))
     # l.error('Error')
     # l.error('Ooops')
+    s = {
+        1: 9,
+        '1': '9',
+        'j': [1, 3, 5],
+        'r': [1, {'g': 'vv {med}'}, {5: {8: [{'z': '{nbr}'}]}}],
+    }
+    ctx = {
+        'med': 'MED',
+        'nbr': 4,
+    }
+    res1 = Eval(s, ctx).eval(eval_result=True)
+    res2 = Eval(s, ctx).eval(eval_result=False)
+    from pprint import pprint
+
+    pprint(res1)
+    pprint(res2)
