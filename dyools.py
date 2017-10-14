@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from __future__ import (absolute_import, division, print_function, unicode_literals)
 import os
 import re
 from contextlib import contextmanager
 
 import click
 import sys
+
+try:
+    basestring
+except NameError:
+    basestring = str
 
 __VERSION__ = '0.3.0'
 __AUTHOR__ = ''
@@ -43,6 +49,8 @@ class IF(object):
 
     @classmethod
     def is_iterable(cls, text):
+        if cls.is_str(text):
+            return False
         if hasattr(text, '__iter__'):
             return True
         else:

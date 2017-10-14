@@ -23,6 +23,7 @@ setup(
     package_dir={},
     install_requires=[
         'click',
+        'future'
     ],
 
 )
