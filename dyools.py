@@ -1,15 +1,52 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
+import re
 from contextlib import contextmanager
 
 import click
 import sys
 
-__VERSION__ = '0.2.2'
+__VERSION__ = '0.3.0'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
+
+
+class IF(object):
+    @classmethod
+    def is_xmlid(cls, text):
+        if not cls.is_str(text) or cls.is_empty(text):
+            return False
+        else:
+            text = text.strip()
+            if re.match("^[a-z0-9_]+.[a-z0-9_]+$", text):
+                return True
+            else:
+                return False
+
+    @classmethod
+    def is_str(cls, text):
+        if isinstance(text, basestring):
+            return True
+        else:
+            return False
+
+    @classmethod
+    def is_empty(cls, text):
+        if cls.is_str(text):
+            text = text.strip()
+        if text:
+            return False
+        else:
+            return True
+
+    @classmethod
+    def is_iterable(cls, text):
+        if hasattr(text, '__iter__'):
+            return True
+        else:
+            return False
 
 
 class Eval(object):
@@ -107,41 +144,3 @@ class Logger(object):
 
     def title(self, msg):
         click.secho(msg, fg='white', bold=True)
-
-
-if __name__ == '__main__':
-    # l = Logger()
-    # l.title('Title')
-    # l.info('Info')
-    # l.warn('Warn')
-    # l.debug('Debug')
-    # l.success('Success')
-    # l.code('Code')
-    #
-    # l.info(os.getcwd())
-    # with Path.chdir('/'):
-    #     l.warn(os.getcwd())
-    # l.info(os.getcwd())
-
-
-    # from pprint import pprint
-    #
-    # pprint(Path.subpaths('/hh/k/l/mmmmmm/TTT', True))
-    # l.error('Error')
-    # l.error('Ooops')
-    s = {
-        1: 9,
-        '1': '9',
-        'j': [1, 3, 5],
-        'r': [1, {'g': 'vv {med}'}, {5: {8: [{'z': '{nbr}'}]}}],
-    }
-    ctx = {
-        'med': 'MED',
-        'nbr': 4,
-    }
-    res1 = Eval(s, ctx).eval(eval_result=True)
-    res2 = Eval(s, ctx).eval(eval_result=False)
-    from pprint import pprint
-
-    pprint(res1)
-    pprint(res2)
