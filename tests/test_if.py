@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 
-class TestEval(TestCase):
+class TestIF(TestCase):
     def test_is_str(self):
         from dyools import IF
         self.assertTrue(IF.is_str('Text'))
