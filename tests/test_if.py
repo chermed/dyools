@@ -30,6 +30,8 @@ class TestIF(TestCase):
         self.assertFalse(IF.is_xmlid(' '))
         self.assertFalse(IF.is_xmlid(6))
         self.assertFalse(IF.is_xmlid([]))
+        self.assertFalse(IF.is_xmlid('abcd'))
+
 
     def test_is_iterable(self):
         from dyools import IF

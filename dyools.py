@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import (absolute_import, division, print_function, unicode_literals)
+
 import os
 import re
+import sys
 from contextlib import contextmanager
 
 import click
-import sys
 
 try:
     basestring
 except NameError:
     basestring = str
 
-__VERSION__ = '0.4.0'
+__VERSION__ = '0.4.1'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -78,7 +79,7 @@ class IF(object):
             return False
         else:
             text = text.strip()
-            if re.match("^[a-z0-9_]+.[a-z0-9_]+$", text):
+            if re.match("^[a-z0-9_]+\.[a-z0-9_]+$", text):
                 return True
             else:
                 return False
