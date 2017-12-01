@@ -14,7 +14,7 @@ try:
 except NameError:
     basestring = str
 
-__VERSION__ = '0.4.1'
+__VERSION__ = '0.4.2'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -184,24 +184,35 @@ class Path(object):
 
 
 class Logger(object):
+    def _clean_msg(self, msg):
+        if not isinstance(msg, basestring):
+            try:
+                msg = unicode(msg)
+            except:
+                try:
+                    msg = str(msg)
+                except:
+                    pass
+        return msg
+
     def info(self, msg):
-        click.echo(msg)
+        click.echo(self._clean_msg(msg))
 
     def warn(self, msg):
-        click.secho(msg, fg='yellow')
+        click.secho(self._clean_msg(msg), fg='yellow')
 
     def debug(self, msg):
-        click.secho(msg, fg='blue')
+        click.secho(self._clean_msg(msg), fg='blue')
 
     def success(self, msg):
-        click.secho(msg, fg='green')
+        click.secho(self._clean_msg(msg), fg='green')
 
     def code(self, msg):
-        click.secho(msg, fg='cyan')
+        click.secho(self._clean_msg(msg), fg='cyan')
 
     def error(self, msg):
-        click.secho(msg, fg='red')
+        click.secho(self._clean_msg(msg), fg='red')
         sys.exit(-1)
 
     def title(self, msg):
-        click.secho(msg, fg='white', bold=True)
+        click.secho(self._clean_msg(msg), fg='white', bold=True)
