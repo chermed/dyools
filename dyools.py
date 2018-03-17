@@ -14,7 +14,7 @@ try:
 except NameError:
     basestring = str
 
-__VERSION__ = '0.4.3'
+__VERSION__ = '0.4.4'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -221,11 +221,6 @@ class Logger(object):
             sys.exit(-1)
 
     def error(self, msg, exit=True):
-        click.secho(self._clean_msg(msg), fg='red')
-        if exit:
-            sys.exit(-1)
-
-    def error(self, msg, exit=False):
         click.secho(self._clean_msg(msg), fg='red')
         if exit:
             sys.exit(-1)
