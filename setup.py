@@ -24,9 +24,9 @@ setup(
     package_dir={},
     install_requires=[
         'click',
-        'future'
-        'pytest-runner'
-        'pytest'
+        'future',
+        'pytest-runner',
+        'pytest',
     ],
     setup_requires=['pytest-runner', ],
     tests_require=['pytest', ],
