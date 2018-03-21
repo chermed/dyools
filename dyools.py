@@ -14,7 +14,7 @@ try:
 except NameError:
     basestring = str
 
-__VERSION__ = '0.4.4'
+__VERSION__ = '0.5.0'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -229,3 +229,18 @@ class Logger(object):
         click.secho(self._clean_msg(msg), fg='white', bold=True)
         if exit:
             sys.exit(-1)
+
+
+class File(object):
+    @classmethod
+    def get_size_str(cls, path, unit='mb'):
+        size, u = cls._get_size(path, unit=unit)
+        return "%s %s" % (size, u)
+
+    @classmethod
+    def _get_size(cls, path, unit='mb'):
+        size = os.path.getsize(path)
+        if unit == 'mb':
+            return round(size / (1024. * 1024.), 2), 'MB'
+        else:
+            return round(size, 2), 'B'
