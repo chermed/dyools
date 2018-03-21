@@ -14,7 +14,7 @@ try:
 except NameError:
     basestring = str
 
-__VERSION__ = '0.5.0'
+__VERSION__ = '0.5.1'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -236,6 +236,11 @@ class File(object):
     def get_size_str(cls, path, unit='mb'):
         size, u = cls._get_size(path, unit=unit)
         return "%s %s" % (size, u)
+
+    @classmethod
+    def get_size(cls, path, unit='mb'):
+        size, u = cls._get_size(path, unit=unit)
+        return size
 
     @classmethod
     def _get_size(cls, path, unit='mb'):
