@@ -7,6 +7,7 @@ import os
 import re
 import sys
 from contextlib import contextmanager
+from datetime import datetime
 from pprint import pprint
 
 import click
@@ -16,7 +17,12 @@ try:
 except NameError:
     basestring = str
 
-__VERSION__ = '0.6.0'
+try:
+    from odoo.tools import human_size
+except:
+    human_size = lambda r: r
+
+__VERSION__ = '0.6.1'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -72,32 +78,46 @@ class ENV(object):
     def __init__(self, env=False, odoo=False, dbname=False, verbose=True):
         assert (env and odoo) or (
                 odoo and dbname), "give an existing environnement or specify odoo and dbname for creating a new one"
+        self.odoo = odoo
+        self.dbname = dbname
+        self.verbose = verbose
+        self.cr = False
+        self.conf = self.odoo.tools.config
+        self.list_db = self.odoo.tools.config['list_db']
+        self.list_db_disabled = self.odoo.tools.config['list_db'] == False
         if env:
             self.env = env
+            self.dbname = self.env.cr.dbname
+            self.cr = self.env.cr
         else:
-            registry = odoo.modules.registry.Registry.new(dbname)
+            self.reset()
+
+    def _require_env(self):
+        assert self.env, "An environment is required for this method"
+
+    def reset(self):
+        if self.cr and not self.cr.closed:
+            print('closing the cursor')
+            self.cr.close()
+        try:
+            registry = self.odoo.modules.registry.Registry.new(self.dbname)
             cr = registry.cursor()
-            self.env = odoo.api.Environment(cr, odoo.SUPERUSER_ID, {})
-        self.odoo = odoo
-        self.dbname = self.env.cr.dbname
-        self.cr = self.env.cr
-        self.conf = odoo.tools.config
-        self.verbose = verbose
-
-    def get_env(self):
-        return self.env
-
-    def get_self(self):
-        return self.env
+            self.env = self.odoo.api.Environment(cr, self.odoo.SUPERUSER_ID, {})
+        except Exception as e:
+            self.env = False
+        if self.env:
+            self.dbname = self.env.cr.dbname
+            self.cr = self.env.cr
+        else:
+            self.cr = False
 
     def close(self):
+        self._require_env()
         if not self.cr.closed:
             self.cr.close()
 
-    def show_env(self):
-        print(self.env, self.odoo, self.dbname, self.cr)
-
-    def get_addons_list(self, enterprise=False, core=False, extra=True):
+    def get_addons(self, enterprise=False, core=False, extra=True):
+        self._require_env()
         installed, uninstalled = [], []
         for path in self.conf['addons_path'].split(','):
             dirs = [ddir for ddir in os.listdir(path) if os.path.isdir(os.path.join(path, ddir))]
@@ -118,7 +138,8 @@ class ENV(object):
         return installed, uninstalled
 
     def check_uninstalled_modules(self, enterprise=False, core=False, extra=True):
-        installed, uninstalled = self.get_addons_list(enterprise=enterprise, core=core, extra=extra)
+        self._require_env()
+        installed, uninstalled = self.get_addons(enterprise=enterprise, core=core, extra=extra)
         pprint('Installed modules   : %s' % installed)
         pprint('Uninstalled modules : %s' % uninstalled)
         if uninstalled:
@@ -127,6 +148,7 @@ class ENV(object):
             sys.exit(0)
 
     def show(self, records, fields=[], types=[]):
+        self._require_env()
         assert isinstance(fields, list), 'fields should be a list'
         print('Show %s record(s)' % len(records))
         if not fields:
@@ -143,6 +165,7 @@ class ENV(object):
                 print("{:_<40}<{}>".format(field, record.mapped(field) if '.' in field else record[field]))
 
     def get(self, model, domain, limit=False, order=False):
+        self._require_env()
         records = model
         if isinstance(domain, tuple):
             domain = [domain]
@@ -151,7 +174,54 @@ class ENV(object):
         if isinstance(records, self.odoo.models.Model):
             domain = ['&', ('id', 'in', records.ids)] + domain
             model = records._name
-        return self.env[model].search(domain)
+        args = {}
+        if limit: args['limit'] = limit
+        if order: args['order'] = order
+        return self.env[model].search(domain, **args)
+
+    def dump_db(self, dest=False, zip=True):
+        self._require_env()
+        data_dir = os.path.join(self.odoo.tools.config["data_dir"], "backups", self.dbname)
+        dest = dest or data_dir
+        try:
+            os.makedirs(dest)
+        except:
+            pass
+        assert os.path.isdir(dest), "The directory [%s] should exists" % dest
+        now = datetime.now().strftime('%Y%m%d_%H%M%S')
+        ext = 'zip' if zip else 'dump'
+        filename = "{}_{}.{}".format(self.dbname, now, ext)
+        path = os.path.join(dest, filename)
+        if self.list_db_disabled:
+            self.list_db = True
+        with open(path, 'wb+') as destination:
+            args = {}
+            if not zip: args['backup_format'] = 'custom'
+            self.odoo.service.db.dump_db(self.dbname, destination, **args)
+        if self.list_db_disabled:
+            self.list_db = False
+        pprint('End: %s' % path)
+        size = human_size(os.path.getsize(path))
+        pprint('Size: %s' % size)
+        return path
+
+    def drop_db(self):
+        try:
+            self.odoo.service.db.exp_drop(self.dbname)
+        except Exception as e:
+            pass
+        pprint('End: dbname=%s is dropped' % self.dbname)
+        return self.dbname
+
+    def restore_db(self, path, drop=False):
+        assert os.path.isfile(path), 'The path [%s] sould be a file' % path
+        if drop:
+            self.drop_db()
+        size = human_size(os.path.getsize(path))
+        pprint('Size: %s' % size)
+        self.odoo.service.db.restore_db(self.dbname, path)
+        pprint('End: %s dbname=%s' % (path, self.dbname))
+        return path
 
 
 class Operator(object):
