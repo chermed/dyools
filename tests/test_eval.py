@@ -15,3 +15,12 @@ class TestEval(TestCase):
             'z': 5
         }
         self.assertEqual(Eval(item, ctx).eval(), res)
+
+    def test_eval_2(self):
+        from dyools import Eval
+        ctx = {
+            'fname': 'Med',
+        }
+        item = [['$fname$', 'Maroc'], ['$fname$', 'Maroc']]
+        res = [['Med', 'Maroc'], ['Med', 'Maroc']]
+        self.assertEqual(Eval(item, ctx).eval(), res)
