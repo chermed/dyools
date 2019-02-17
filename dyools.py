@@ -372,6 +372,8 @@ class Env(object):
 
     def show(self, records, fields=[], types=[], title=False):
         self._require_env()
+        if isinstance(types, basestring):
+            types = types.split()
         assert isinstance(fields, list), 'fields should be a list'
         if title:
             print('@@@@ %s @@@@' % title)
@@ -389,7 +391,7 @@ class Env(object):
             for field in fields:
                 print("{:_<40}<{}>".format(field, record.mapped(field) if '.' in field else record[field]))
 
-    def get(self, model, domain, limit=False, order=False):
+    def get(self, model, domain=[], limit=False, order=False):
         self._require_env()
         records = model
         if isinstance(domain, tuple):
@@ -403,6 +405,62 @@ class Env(object):
         if limit: kwargs['limit'] = limit
         if order: kwargs['order'] = order
         return self.env[model].search(domain, **kwargs)
+
+    def get_users(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('res.users', domain, limit, order)
+
+    def get_partners(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('res.partner', domain, limit, order)
+
+    def get_products(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('product.product', domain, limit, order)
+
+    def get_templates(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('product.template', domain, limit, order)
+
+    def get_invoices(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('account.invoice', domain, limit, order)
+
+    def get_sales(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('sale.order', domain, limit, order)
+
+    def get_purchases(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('sale.purchase', domain, limit, order)
+
+    def get_locations(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('stock.location', domain, limit, order)
+
+    def get_quants(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('stock.quant', domain, limit, order)
+
+    def get_pickings(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('stock.picking', domain, limit, order)
+
+    def get_stock_moves(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('stock.move', domain, limit, order)
+
+    def get_account_moves(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('account.move', domain, limit, order)
+
+    def get_account_move_liness(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('account.move.line', domain, limit, order)
+
+    def get_aml(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('account.move.line', domain, limit, order)
 
     def commit(self):
         self._require_env()
