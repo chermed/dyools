@@ -26,7 +26,7 @@ try:
 except:
     human_size = lambda r: r
 
-__VERSION__ = '0.7.0'
+__VERSION__ = '0.7.1'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -295,7 +295,7 @@ def contruct_domain_from_str(domain):
     return res
 
 
-class ENV(object):
+class Env(object):
     def __init__(self, env=False, odoo=False, dbname=False, verbose=True):
         assert (env and odoo) or (
                 odoo and dbname), "give an existing environnement or specify odoo and dbname for creating a new one"
@@ -370,9 +370,11 @@ class ENV(object):
         else:
             sys.exit(0)
 
-    def show(self, records, fields=[], types=[]):
+    def show(self, records, fields=[], types=[], title=False):
         self._require_env()
         assert isinstance(fields, list), 'fields should be a list'
+        if title:
+            print('@@@@ %s @@@@' % title)
         print('Show %s record(s)' % len(records))
         if not fields:
             fields = records.fields_get().keys()
@@ -401,6 +403,59 @@ class ENV(object):
         if limit: kwargs['limit'] = limit
         if order: kwargs['order'] = order
         return self.env[model].search(domain, **kwargs)
+
+    def commit(self):
+        self._require_env()
+        self.env.cr.commit()
+
+    def clear(self):
+        self._require_env()
+        if hasattr(self.env, 'invalidate_all'):
+            self.env.invalidate_all()
+        else:
+            self.env.cache.invalidate()
+
+    def get_param(self, param, default=False):
+        self._require_env()
+        return self.env['ir.config_parameter'].get_param(param, default)
+
+    def set_param(self, param, value):
+        self._require_env()
+        self.env['ir.config_parameter'].set_param(param, value)
+        return self.get_param(param)
+
+    def install(self, addons):
+        self._require_env()
+        if isinstance(addons, basestring):
+            addons = addons.split()
+        addons = self.env['ir.module.module'].search([('name', 'in', addons)])
+        addons_names = addons.mapped('name')
+        self.show(addons, fields=['name', 'state'], title="modules before")
+        self.env['ir.module.module'].search([('name', 'in', addons_names)]).button_immediate_install()
+        self.clear()
+        self.show(addons, fields=['name', 'state'], title="modules after")
+
+    def upgrade(self, addons):
+        self._require_env()
+        if isinstance(addons, basestring):
+            addons = addons.split()
+        addons = self.env['ir.module.module'].search([('name', 'in', addons)])
+        addons_names = addons.mapped('name')
+        self.show(addons, fields=['name', 'state'], title="modules before")
+        self.env['ir.module.module'].search([('name', 'in', addons_names)]).button_immediate_upgrade()
+        self.clear()
+        self.show(addons, fields=['name', 'state'], title="modules after")
+
+    def uninstall(self, addons):
+        self._require_env()
+        if isinstance(addons, basestring):
+            addons = addons.split()
+        addons = self.env['ir.module.module'].search([('name', 'in', addons)])
+        addons_names = addons.mapped('name')
+        self.show(addons, fields=['name', 'state'], title="modules before")
+        self.env['ir.module.module'].search([('name', 'in', addons_names)]).module_uninstall()
+        self.clear()
+        self.show(addons, fields=['name', 'state'], title="modules after")
 
     def dump_db(self, dest=False, zip=True):
         self._require_env()
