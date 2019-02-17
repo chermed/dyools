@@ -21,6 +21,6 @@ class TestEval(TestCase):
         ctx = {
             'fname': 'Med',
         }
-        item = [['$fname$', 'Maroc'], ['$fname$', 'Maroc']]
+        item = [['{fname}', 'Maroc'], ['{fname}', 'Maroc']]
         res = [['Med', 'Maroc'], ['Med', 'Maroc']]
         self.assertEqual(Eval(item, ctx).eval(), res)

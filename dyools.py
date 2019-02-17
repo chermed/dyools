@@ -2,15 +2,19 @@
 # -*- coding: utf-8 -*-
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import calendar
 import inspect
 import os
 import re
+import shutil
 import sys
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, date
 from pprint import pprint
 
 import click
+from dateutil.parser import parse as dtparse
+from dateutil.relativedelta import relativedelta
 
 try:
     basestring
@@ -22,10 +26,14 @@ try:
 except:
     human_size = lambda r: r
 
-__VERSION__ = '0.6.1'
+__VERSION__ = '0.7.0'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
+
+DATE_FORMAT, DATETIME_FORMAT = "%Y-%m-%d", "%Y-%m-%d %H:%M:%S"
+DATE_FR_FORMAT, DATETIME_FR_FORMAT = "%d/%m/%Y", "%d/%m/%Y %H:%M:%S"
+DATE_TYPE, DATETIME_TYPE = "date", "datetime"
 
 
 def signature(callable):
@@ -35,6 +43,218 @@ def signature(callable):
         pprint(inspect.getargspec(callable))
     if getattr(inspect, 'getfullargspec'):
         pprint(inspect.getfullargspec(callable))
+
+
+def date_range(dt_start, dt_stop=False, **kwargs):
+    dt = Date(dt_start)
+    stop = dt_stop
+    if stop:
+        dt_stop = Date(dt_stop)
+    if not kwargs:
+        kwargs = {'days': 1}
+    while True:
+        yield dt.to_str()
+        dt = dt.apply(**kwargs)
+        if stop and dt_stop.to_str() < dt.to_str():
+            break
+
+
+class Date(object):
+    def __init__(self, *args, **kwargs):
+        assert args or kwargs, "arguments should be a date or parameters for datetime"
+        ttype = dt = False
+        if len(args) == 1:
+            item = args[0]
+            if isinstance(item, basestring):
+                if len(item) == 10:
+                    dt = datetime.strptime(item, DATE_FORMAT)
+                    ttype = DATE_TYPE
+                elif len(item) == 19:
+                    dt = datetime.strptime(item, DATETIME_FORMAT)
+                    ttype = DATETIME_TYPE
+                else:
+                    dt = dtparse(item)
+                    if ':' in item:
+                        ttype = DATETIME_TYPE
+                    else:
+                        ttype = DATE_TYPE
+            elif isinstance(item, datetime):
+                dt = item
+                ttype = DATETIME_TYPE
+            elif isinstance(item, date):
+                dt = datetime(item.year, item.month, item.day)
+                ttype = DATE_TYPE
+            elif isinstance(item, Date):
+                dt = item.dt
+                ttype = item.ttype
+        else:
+            dt = datetime(*args, **kwargs)
+            if len(args) + len(kwargs) == 3:
+                ttype = DATE_TYPE
+            else:
+                ttype = DATETIME_FORMAT
+        assert ttype and dt, "The format of date [%s] is not valid" % item
+        self.dt = dt
+        self.ttype = ttype
+
+    def relativedelta(self, **kwargs):
+        self.apply(**kwargs)
+        if self.ttype == DATE_TYPE:
+            return self.dt.strftime(DATE_FORMAT)
+        else:
+            return self.dt.strftime(DATETIME_FORMAT)
+
+    def apply(self, **kwargs):
+        sub = kwargs.get('sub', False) == True
+        if 'sub' in kwargs: del kwargs['sub']
+        if sub:
+            self.dt = self.dt - relativedelta(**kwargs)
+        else:
+            self.dt = self.dt + relativedelta(**kwargs)
+        return self
+
+    def first_day(self):
+        dt = self.dt + relativedelta(day=1)
+        if self.ttype == DATE_TYPE:
+            return dt.strftime(DATE_FORMAT)
+        else:
+            return dt.strftime(DATETIME_FORMAT)
+
+    def last_day(self):
+        dt = self.dt + relativedelta(day=calendar.monthrange(self.dt.year, self.dt.month)[1])
+        if self.ttype == DATE_TYPE:
+            return dt.strftime(DATE_FORMAT)
+        else:
+            return dt.strftime(DATETIME_FORMAT)
+
+    def to_datetime(self):
+        return self.dt
+
+    def to_date(self):
+        return self.dt.date()
+
+    def to_str(self):
+        if self.ttype == DATE_TYPE:
+            return self.dt.strftime(DATE_FORMAT)
+        else:
+            return self.dt.strftime(DATETIME_FORMAT)
+
+    def to_fr(self):
+        if self.ttype == DATE_TYPE:
+            return self.dt.strftime(DATE_FR_FORMAT)
+        else:
+            return self.dt.strftime(DATETIME_FR_FORMAT)
+
+    def is_between(self, dt_start, dt_stop):
+        dt_start = Date(dt_start) if dt_start else False
+        dt_stop = Date(dt_stop) if dt_stop else False
+        dt = self
+        if dt_start and dt_stop:
+            if dt_stop < dt_start:
+                dt_start, dt_stop = dt_stop, dt_start
+            return dt >= dt_start and dt <= dt_stop
+        elif dt_start:
+            return dt >= dt_start
+        elif dt_stop:
+            return dt <= dt_stop
+        else:
+            return True
+
+    def _apply_add_sub(self, other, sub=False):
+        kwargs = {}
+        mapping = {
+            'y': 'years',
+            'm': 'months',
+            'd': 'days',
+            'H': 'hours',
+            'M': 'minutes',
+            'S': 'seconds',
+        }
+        assert isinstance(other, (basestring, int)), "format of [%s] is invalid" % other
+        if isinstance(other, basestring):
+            coef = 1
+            if other and other[0] in ['+', '-']:
+                coef, other = other[0], other[1:]
+                coef = -1 if coef == '-' else 1
+            assert len(other) > 1 and other[-1] in mapping.keys(), "format of [%s] is invalid" % other
+            assert other[:-1].isdigit(), "format of [%s] is invalid" % other
+            kwargs[mapping[other[-1]]] = coef * int(other[:-1])
+        elif isinstance(other, int):
+            kwargs['days'] = other
+        if sub: kwargs['sub'] = True
+        return self.relativedelta(**kwargs)
+
+    def __sub__(self, other):
+        return self._apply_add_sub(other, sub=True)
+
+    def __add__(self, other):
+        return self._apply_add_sub(other)
+
+    def __str__(self):
+        if self.ttype == DATE_TYPE:
+            return self.dt.strftime(DATE_FORMAT)
+        else:
+            return self.dt.strftime(DATETIME_FORMAT)
+
+    def __repr__(self):
+        if self.ttype == DATE_TYPE:
+            return self.dt.strftime(DATE_FORMAT)
+        else:
+            return self.dt.strftime(DATETIME_FORMAT)
+
+    def __lt__(self, other):
+        return self.to_str() < Date(other).to_str()
+
+    def __le__(self, other):
+        return self.to_str() <= Date(other).to_str()
+
+    def __eq__(self, other):
+        return self.to_str() == Date(other).to_str()
+
+    def __ne__(self, other):
+        return self.to_str() != Date(other).to_str()
+
+    def __gt__(self, other):
+        return self.to_str() > Date(other).to_str()
+
+    def __ge__(self, other):
+        return self.to_str() >= Date(other).to_str()
+
+
+def create_file(path, content):
+    def _erase_data(_path, _content):
+        with open(_path, 'w+') as f:
+            f.write(_content)
+
+    if not os.path.isfile(path):
+        ddir = os.path.dirname(path)
+        create_dir(ddir)
+        _erase_data(path, content)
+    else:
+        with open(path, 'r') as f:
+            c = f.read()
+        if c != content:
+            _erase_data(path, content)
+
+
+def create_dir(path):
+    if not os.path.isdir(path):
+        os.makedirs(path)
+
+
+def clean_dir(path):
+    if os.path.exists(path):
+        for item in os.listdir(path):
+            full_path = os.path.join(path, item)
+            if os.path.isdir(full_path):
+                shutil.rmtree(full_path)
+            elif os.path.isfile(full_path):
+                os.remove(full_path)
+
+
+def delete_path(path):
+    if os.path.exists(path):
+        shutil.rmtree(path)
 
 
 def contruct_domain_from_str(domain):
@@ -58,6 +278,7 @@ def contruct_domain_from_str(domain):
         for key, op, value in domain:
             float_parts = value.split('.')
             isfloat = len(float_parts) == 2
+            if op == "==": op = '='
             if value == 'False':
                 value = False
             elif value == 'True':
@@ -85,6 +306,7 @@ class ENV(object):
         self.conf = self.odoo.tools.config
         self.list_db = self.odoo.tools.config['list_db']
         self.list_db_disabled = self.odoo.tools.config['list_db'] == False
+        self.version = odoo.release.version_info[0]
         if env:
             self.env = env
             self.dbname = self.env.cr.dbname
@@ -116,10 +338,11 @@ class ENV(object):
         if not self.cr.closed:
             self.cr.close()
 
-    def get_addons(self, enterprise=False, core=False, extra=True):
+    def get_addons(self, enterprise=False, core=False, extra=True, addons_path=False):
         self._require_env()
         installed, uninstalled = [], []
-        for path in self.conf['addons_path'].split(','):
+        addons_path = addons_path or self.conf['addons_path'].split(',')
+        for path in addons_path:
             dirs = [ddir for ddir in os.listdir(path) if os.path.isdir(os.path.join(path, ddir))]
             addons = [ddir for ddir in dirs if
                       len({'__manifest__.py', '__init__.py'} & set(os.listdir(os.path.join(path, ddir)))) == 2]
@@ -137,9 +360,9 @@ class ENV(object):
             uninstalled.extend(modules.filtered(lambda a: a.state == 'uninstalled').mapped('name'))
         return installed, uninstalled
 
-    def check_uninstalled_modules(self, enterprise=False, core=False, extra=True):
+    def check_uninstalled_modules(self, enterprise=False, core=False, extra=True, addons_path=False):
         self._require_env()
-        installed, uninstalled = self.get_addons(enterprise=enterprise, core=core, extra=extra)
+        installed, uninstalled = self.get_addons(enterprise=enterprise, core=core, extra=extra, addons_path=addons_path)
         pprint('Installed modules   : %s' % installed)
         pprint('Uninstalled modules : %s' % uninstalled)
         if uninstalled:
@@ -174,10 +397,10 @@ class ENV(object):
         if isinstance(records, self.odoo.models.Model):
             domain = ['&', ('id', 'in', records.ids)] + domain
             model = records._name
-        args = {}
-        if limit: args['limit'] = limit
-        if order: args['order'] = order
-        return self.env[model].search(domain, **args)
+        kwargs = {}
+        if limit: kwargs['limit'] = limit
+        if order: kwargs['order'] = order
+        return self.env[model].search(domain, **kwargs)
 
     def dump_db(self, dest=False, zip=True):
         self._require_env()
@@ -195,9 +418,9 @@ class ENV(object):
         if self.list_db_disabled:
             self.list_db = True
         with open(path, 'wb+') as destination:
-            args = {}
-            if not zip: args['backup_format'] = 'custom'
-            self.odoo.service.db.dump_db(self.dbname, destination, **args)
+            kwargs = {}
+            if not zip: kwargs['backup_format'] = 'custom'
+            self.odoo.service.db.dump_db(self.dbname, destination, **kwargs)
         if self.list_db_disabled:
             self.list_db = False
         pprint('End: %s' % path)
