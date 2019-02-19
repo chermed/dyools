@@ -4,7 +4,9 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import base64
 import calendar
+import importlib
 import inspect
+import logging
 import os
 import re
 import shutil
@@ -29,7 +31,7 @@ try:
 except:
     human_size = lambda r: r
 
-__VERSION__ = '0.7.2'
+__VERSION__ = '0.7.3'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -37,6 +39,8 @@ __DATE__ = ''
 DATE_FORMAT, DATETIME_FORMAT = "%Y-%m-%d", "%Y-%m-%d %H:%M:%S"
 DATE_FR_FORMAT, DATETIME_FR_FORMAT = "%d/%m/%Y", "%d/%m/%Y %H:%M:%S"
 DATE_TYPE, DATETIME_TYPE = "date", "datetime"
+
+logger = logging.getLogger(__name__)
 
 
 def signature(callable):
@@ -341,6 +345,14 @@ class Env(object):
         if not self.cr.closed:
             self.cr.close()
 
+    def info(self, *args, **kwargs):
+        logger.info(*args, **kwargs)
+
+    def path(self, module):
+        if isinstance(module, basestring):
+            module = importlib.import_module(module)
+        return os.path.dirname(module.__file__)
+
     def get_addons(self, enterprise=False, core=False, extra=True, addons_path=False):
         self._require_env()
         installed, uninstalled = [], []
@@ -565,6 +577,9 @@ class Env(object):
         record_functions = data.get('functions', [])
         record_export = data.get('export')
         record_filter = data.get('filter')
+        record_ctx = data.get('context', {})
+        if context.get('__global_context__'):
+            record_ctx.update(context.get('__global_context__'))
         if refs:
             if isinstance(refs, int):
                 records = records.browse(refs)
@@ -582,41 +597,58 @@ class Env(object):
                     records = records.search(['&', ('id', 'in', records.ids)] + record_filter)
                     if not records:
                         return False
-            if record_data:
-                assert isinstance(record_data, list), "The data [%s] should be a list" % record_data
-                record_data = self._normalize_record_data(records._name, record_data, context, assets)
-                if len(records) > 0:
-                    records.write(record_data)
-                else:
-                    records = records.create(record_data)
-                    if isinstance(refs, basestring) and IF.is_xmlid(refs):
-                        self.update_xmlid(records, xmlid=refs)
-            if record_export:
-                context[record_export] = records
-            context['%s_record' % records._name.replace('.', '_')] = records
-            for function in record_functions:
-                func_name = function['name']
-                func_args = function['args'] if function.get('args') else []
-                func_kwargs = function['kwargs'] if function.get('kwargs') else {}
-                assert isinstance(func_args, list), "Args [%s] should be a list" % func_args
-                assert isinstance(func_kwargs, dict), "Kwargs [%s] should be a dict" % func_kwargs
-                func_res = getattr(records, func_name)(*func_args, **func_kwargs)
-                func_export = function.get('export')
-                if func_export:
-                    context[func_export] = func_res
-                context['%s_%s' % (records._name.replace('.', '_'), func_name)] = func_res
+        print('CTX before: %s' % records.env.context)  # TODO
+        if record_ctx:
+            records = records.with_context(**record_ctx)
+        print('CTX after: %s' % records.env.context)  # TODO
+        if record_data:
+            assert isinstance(record_data, list), "The data [%s] should be a list" % record_data
+            record_data = self._normalize_record_data(records._name, record_data, context, assets)
+            if len(records) > 0:
+                records.write(record_data)
+            else:
+                records = records.create(record_data)
+                if isinstance(refs, basestring) and IF.is_xmlid(refs):
+                    self.update_xmlid(records, xmlid=refs)
+        if record_export:
+            context[record_export] = records
+        context['%s_record' % records._name.replace('.', '_')] = records
+        for function in record_functions:
+            func_name = function['name']
+            func_args = function['args'] if function.get('args') else []
+            func_kwargs = function['kwargs'] if function.get('kwargs') else {}
+            assert isinstance(func_args, list), "Args [%s] should be a list" % func_args
+            assert isinstance(func_kwargs, dict), "Kwargs [%s] should be a dict" % func_kwargs
+            func_res = getattr(records, func_name)(*func_args, **func_kwargs)
+            func_export = function.get('export')
+            if func_export:
+                context[func_export] = func_res
+            context['%s_%s' % (records._name.replace('.', '_'), func_name)] = func_res
 
     def _process_yaml_doc(self, index, doc, context, assets):
         for key, value in doc.items():
             if key == 'python':
-                print("[%s] ***** execute python *****" % index)
+                print("[%s] ***** Execute python *****" % index)
                 self._process_python(value, context, assets)
             elif key == 'record':
-                print("[%s] ***** process record *****" % index)
+                print("[%s] ***** Process record *****" % index)
                 self._process_record(value, context, assets)
             elif key == 'title':
                 value = Eval(value, context).eval()
                 print("[%s] ***** %s *****" % (index, value))
+            elif key == 'context':
+                value = Eval(value, context).eval()
+                context['__global_context__'].update(value)
+                print("[%s] ***** Add global context *****" % index)
+            elif key == 'install':
+                print("[%s] ***** Install modules *****" % index)
+                self.install(value)
+            elif key == 'upgrade':
+                print("[%s] ***** Upgrade modules *****" % index)
+                self.upgrade(value)
+            elif key == 'uninstall':
+                print("[%s] ***** Uninstall modules *****" % index)
+                self.uninstall(value)
 
     def load_yaml(self, path, assets=False, start=False, stop=False, auto_commit=False):
         def __add_file(f):
@@ -667,12 +699,13 @@ class Env(object):
                 'self': self.env,
                 'env': self.env,
                 'user': self.env.user,
+                '__global_context__': {},
             }
             index = 0
             for doc in yaml.load_all(open(full_yaml_path)):
                 if doc:
                     index += 1
-                    self._process_yaml_doc(index, index, doc, context, assets)
+                    self._process_yaml_doc(index, doc, context, assets)
                     if auto_commit:
                         self.commit()
         if '__builtins__' in context: del context['__builtins__']
