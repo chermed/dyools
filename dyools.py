@@ -17,6 +17,7 @@ from datetime import datetime, date
 from pprint import pprint
 
 import click
+import odoorpc
 import yaml
 from dateutil.parser import parse as dtparse
 from dateutil.relativedelta import relativedelta
@@ -31,7 +32,7 @@ try:
 except:
     human_size = lambda r: r
 
-__VERSION__ = '0.7.4'
+__VERSION__ = '0.8.0'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -302,101 +303,55 @@ def contruct_domain_from_str(domain):
     return res
 
 
-class Env(object):
-    def __init__(self, env=False, odoo=False, dbname=False, verbose=True):
-        assert (env and odoo) or (
-                odoo and dbname), "give an existing environnement or specify odoo and dbname for creating a new one"
-        self.odoo = odoo
-        self.dbname = dbname
-        self.verbose = verbose
-        self.cr = False
-        self.conf = self.odoo.tools.config
-        self.list_db = self.odoo.tools.config['list_db']
-        self.list_db_disabled = self.odoo.tools.config['list_db'] == False
-        self.version = odoo.release.version_info[0]
-        if env:
-            self.env = env
-            self.dbname = self.env.cr.dbname
-            self.cr = self.env.cr
-        else:
-            self.reset()
+class Mixin(object):
+    def __init__(self):
+        pass
 
     def _require_env(self):
         assert self.env, "An environment is required for this method"
 
-    def reset(self):
-        if self.cr and not self.cr.closed:
-            print('closing the cursor')
-            self.cr.close()
-        try:
-            registry = self.odoo.modules.registry.Registry.new(self.dbname)
-            cr = registry.cursor()
-            self.env = self.odoo.api.Environment(cr, self.odoo.SUPERUSER_ID, {})
-        except Exception as e:
-            self.env = False
-        if self.env:
-            self.dbname = self.env.cr.dbname
-            self.cr = self.env.cr
-        else:
-            self.cr = False
-
-    def close(self):
-        self._require_env()
-        if not self.cr.closed:
-            self.cr.close()
-
     def info(self, *args, **kwargs):
         logger.info(*args, **kwargs)
 
-    def path(self, module):
-        if isinstance(module, basestring):
-            module = importlib.import_module(module)
-        return os.path.dirname(module.__file__)
+    def debug(self, *args, **kwargs):
+        logger.debug(*args, **kwargs)
 
-    def get_addons(self, enterprise=False, core=False, extra=True, addons_path=False):
-        self._require_env()
-        installed, uninstalled = [], []
-        addons_path = addons_path or self.conf['addons_path'].split(',')
-        for path in addons_path:
-            dirs = [ddir for ddir in os.listdir(path) if os.path.isdir(os.path.join(path, ddir))]
-            addons = [ddir for ddir in dirs if
-                      len({'__manifest__.py', '__init__.py'} & set(os.listdir(os.path.join(path, ddir)))) == 2]
-            modules = self.env['ir.module.module'].search([('name', 'in', addons)])
-            addons = modules.mapped('name')
-            if not addons:
-                continue
-            if not core and {'base', 'sale', 'account'} & set(addons):
-                continue
-            if not enterprise and {'account_reports'} & set(addons):
-                continue
-            if not extra and not ({'base', 'sale', 'account_reports'} & set(addons)):
-                continue
-            installed.extend(modules.filtered(lambda a: a.state == 'installed').mapped('name'))
-            uninstalled.extend(modules.filtered(lambda a: a.state == 'uninstalled').mapped('name'))
-        return installed, uninstalled
+    def warning(self, *args, **kwargs):
+        logger.warning(*args, **kwargs)
 
-    def check_uninstalled_modules(self, enterprise=False, core=False, extra=True, addons_path=False):
+    def error(self, *args, **kwargs):
+        logger.error(*args, **kwargs)
+
+    def get_param(self, param, default=False):
         self._require_env()
-        installed, uninstalled = self.get_addons(enterprise=enterprise, core=core, extra=extra, addons_path=addons_path)
-        pprint('Installed modules   : %s' % installed)
-        pprint('Uninstalled modules : %s' % uninstalled)
-        if uninstalled:
-            sys.exit(-1)
-        else:
-            sys.exit(0)
+        return self.env['ir.config_parameter'].get_param(param, default)
+
+    def set_param(self, param, value):
+        self._require_env()
+        self.env['ir.config_parameter'].set_param(param, value)
+        return self.get_param(param)
 
     def show(self, records, fields=[], types=[], title=False):
         self._require_env()
         if isinstance(types, basestring):
             types = types.split()
+        if isinstance(fields, basestring):
+            fields = fields.split()
         assert isinstance(fields, list), 'fields should be a list'
         if title:
             print('@@@@ %s @@@@' % title)
         print('Show %s record(s)' % len(records))
         if not fields:
-            fields = records.fields_get().keys()
+            if isinstance(records, odoorpc.env.Model):
+                fields = list(self.env[records._name].fields_get().keys())
+            else:
+                fields = list(records.fields_get().keys())
         if types:
-            fields = filter(lambda f: '.' not in f and records.fields_get()[f]['type'] in types, fields)
+            if isinstance(records, odoorpc.env.Model):
+                fields_get = self.env[records._name].fields_get()
+            else:
+                fields_get = records.fields_get()
+            fields = filter(lambda f: '.' not in f and fields_get[f]['type'] in types, fields)
             fields = [f for f in fields]
         if not fields:
             print('Not field is given')
@@ -405,6 +360,11 @@ class Env(object):
             print('%s Record [ID=%s][Name=%s]' % ('#' * 40, record.id, getattr(record, 'display_name', '')))
             for field in fields:
                 print("{:_<40}<{}>".format(field, record.mapped(field) if '.' in field else record[field]))
+
+    def path(self, module):
+        if isinstance(module, basestring):
+            module = importlib.import_module(module)
+        return os.path.dirname(module.__file__)
 
     def get(self, model, domain=[], limit=False, order=False):
         self._require_env()
@@ -415,13 +375,18 @@ class Env(object):
             domain = [domain]
         if isinstance(domain, basestring):
             domain = contruct_domain_from_str(domain)
-        if isinstance(records, self.odoo.models.Model):
+        if hasattr(self.odoo, 'models') and isinstance(records, self.odoo.models.Model):
+            domain = ['&', ('id', 'in', records.ids)] + domain
+            model = records._name
+        if isinstance(records, odoorpc.env.Model):
             domain = ['&', ('id', 'in', records.ids)] + domain
             model = records._name
         kwargs = {}
         if limit: kwargs['limit'] = limit
         if order: kwargs['order'] = order
-        return self.env[model].search(domain, **kwargs)
+        res = self.env[model].search(domain, **kwargs)
+        res = self.obj(model, res)
+        return res
 
     def get_users(self, domain=[], limit=False, order=False):
         self._require_env()
@@ -480,6 +445,7 @@ class Env(object):
         return self.get('account.move.line', domain, limit, order)
 
     def update_xmlid(self, record, xmlid=False):
+        self._require_env()
         assert not xmlid or len(xmlid.split('.')) == 2, "xmlid [%s] is invalid" % xmlid
         xmlid_env = self.env['ir.model.data']
         xmlid_obj = xmlid_env.search([('model', '=', record._name), ('res_id', '=', record.id)], limit=1)
@@ -495,7 +461,195 @@ class Env(object):
                 'model': record._name,
                 'res_id': record.id,
             })
+        if isinstance(xmlid_obj, (int, list)):
+            xmlid_obj = xmlid_env.browse(xmlid_obj)
         return xmlid_obj.complete_name
+
+    def obj(self, model, res):
+        if isinstance(res, (int, list)):
+            return self.env[model].browse(res)
+        return res
+
+    def _process_addons_op(self, addons, op):
+        self._require_env()
+        if isinstance(addons, basestring):
+            addons = addons.split()
+        addons = self.env['ir.module.module'].search([('name', 'in', addons)])
+        addons = self.obj('ir.module.module', addons)
+        addons_names = addons.mapped('name')
+        self.show(addons, fields=['name', 'state'], title="modules before")
+        addons = self.env['ir.module.module'].search([('name', 'in', addons_names)])
+        addons = self.obj('ir.module.module', addons)
+        assert op in ['install', 'upgrade', 'uninstall'], "opeartion %s is npt mapped" % op
+        if op == 'install':
+            addons.button_immediate_install()
+        elif op == 'upgrade':
+            addons.button_immediate_upgrade()
+        elif op == 'uninstall':
+            addons.module_uninstall()
+        self.show(addons, fields=['name', 'state'], title="modules after")
+
+    def install(self, addons):
+        self._process_addons_op(addons, 'install')
+
+    def upgrade(self, addons):
+        self._process_addons_op(addons, 'upgrade')
+
+    def uninstall(self, addons):
+        self._process_addons_op(addons, 'uninstall')
+
+
+class RPC(Mixin):
+    def __init__(self, *args, **kwargs):
+        items = ['host', 'port', 'dbname', 'user', 'password', 'superadminpassword', 'protocol', 'ssl']
+        for i, arg in enumerate(args):
+            kwargs[items[i]] = arg
+        host = kwargs.get('host', os.environ.get('RPC_HOST'))
+        port = kwargs.get('port', os.environ.get('RPC_PORT'))
+        dbname = kwargs.get('dbname', os.environ.get('RPC_DBNAME'))
+        user = kwargs.get('user', os.environ.get('RPC_USER'))
+        password = kwargs.get('password', os.environ.get('RPC_PASSWORD'))
+        superadminpassword = kwargs.get('superadminpassword', os.environ.get('RPC_SUPERADMINPASSWORD'))
+        protocol = kwargs.get('protocol', os.environ.get('RPC_PROTOCOL'))
+        timeout = kwargs.get('timeout', os.environ.get('RPC_TIMEOUT'))
+        timeout = int(timeout) if timeout else 120
+        if not protocol:
+            if kwargs.get('ssl', False) == True:
+                protocol = 'jsonrpc+ssl'
+            else:
+                protocol = 'jsonrpc'
+        assert host and port and dbname, "please provide host, port and dbname"
+        port = int(port)
+        self.dbname = dbname
+        odoo = odoorpc.ODOO(host=host, protocol=protocol, port=port, timeout=timeout)
+        self.env = False
+        self.odoo = odoo
+        self.superadminpassword = superadminpassword
+        self.user = user
+        self.password = password
+
+    def login(self):
+        assert self.user and self.password, "please provide the user and the password"
+        self.odoo.login(self.dbname, self.user, self.password)
+        self.env = self.odoo.env
+        return self.env
+
+    def timeout(self, timeout):
+        self.odoo.config['timeout'] = timeout
+        return self.odoo.config['timeout']
+
+    def dump_db(self, dest, zip=True):
+        try:
+            os.makedirs(dest)
+        except:
+            pass
+        assert os.path.isdir(dest), "The directory [%s] should exists" % dest
+        now = datetime.now().strftime('%Y%m%d_%H%M%S')
+        ext = 'zip' if zip else 'dump'
+        filename = "{}_{}.{}".format(self.dbname, now, ext)
+        path = os.path.join(dest, filename)
+        with open(path, 'wb+') as destination:
+            kwargs = {}
+            if not zip: kwargs['backup_format'] = 'custom'
+            dump = self.odoo.db.dump(self.superadminpassword, self.dbname)
+            with open(path, 'wb') as dump_zip:
+                dump_zip.write(dump.read())
+        pprint('End: %s' % path)
+        size = human_size(os.path.getsize(path))
+        pprint('Size: %s' % size)
+        return path
+
+    def drop_db(self):
+        try:
+            self.odoo.db.drop(self.superadminpassword, self.dbname)
+        except Exception as e:
+            pass
+        pprint('End: dbname=%s is dropped' % self.dbname)
+        return self.dbname
+
+    def restore_db(self, path, drop=False):
+        assert os.path.isfile(path), 'The path [%s] sould be a file' % path
+        if drop:
+            self.drop_db()
+        size = human_size(os.path.getsize(path))
+        pprint('Size: %s' % size)
+        with open(path, 'rb') as dump_zip:
+            self.odoo.db.restore(self.superadminpassword, self.dbname, dump_zip)
+        pprint('End: %s dbname=%s' % (path, self.dbname))
+        return path
+
+
+class Env(Mixin):
+    def __init__(self, env=False, odoo=False, dbname=False, verbose=True):
+        assert (env and odoo) or (
+                odoo and dbname), "give an existing environnement or specify odoo and dbname for creating a new one"
+        self.odoo = odoo
+        self.dbname = dbname
+        self.verbose = verbose
+        self.cr = False
+        self.conf = self.odoo.tools.config
+        self.list_db = self.odoo.tools.config['list_db']
+        self.list_db_disabled = self.odoo.tools.config['list_db'] == False
+        self.version = odoo.release.version_info[0]
+        if env:
+            self.env = env
+            self.dbname = self.env.cr.dbname
+            self.cr = self.env.cr
+        else:
+            self.reset()
+
+    def reset(self):
+        if self.cr and not self.cr.closed:
+            print('closing the cursor')
+            self.cr.close()
+        try:
+            registry = self.odoo.modules.registry.Registry.new(self.dbname)
+            cr = registry.cursor()
+            self.env = self.odoo.api.Environment(cr, self.odoo.SUPERUSER_ID, {})
+        except Exception as e:
+            self.env = False
+        if self.env:
+            self.dbname = self.env.cr.dbname
+            self.cr = self.env.cr
+        else:
+            self.cr = False
+
+    def close(self):
+        self._require_env()
+        if not self.cr.closed:
+            self.cr.close()
+
+    def get_addons(self, enterprise=False, core=False, extra=True, addons_path=False):
+        self._require_env()
+        installed, uninstalled = [], []
+        addons_path = addons_path or self.conf['addons_path'].split(',')
+        for path in addons_path:
+            dirs = [ddir for ddir in os.listdir(path) if os.path.isdir(os.path.join(path, ddir))]
+            addons = [ddir for ddir in dirs if
+                      len({'__manifest__.py', '__init__.py'} & set(os.listdir(os.path.join(path, ddir)))) == 2]
+            modules = self.env['ir.module.module'].search([('name', 'in', addons)])
+            addons = modules.mapped('name')
+            if not addons:
+                continue
+            if not core and {'base', 'sale', 'account'} & set(addons):
+                continue
+            if not enterprise and {'account_reports'} & set(addons):
+                continue
+            if not extra and not ({'base', 'sale', 'account_reports'} & set(addons)):
+                continue
+            installed.extend(modules.filtered(lambda a: a.state == 'installed').mapped('name'))
+            uninstalled.extend(modules.filtered(lambda a: a.state == 'uninstalled').mapped('name'))
+        return installed, uninstalled
+
+    def check_uninstalled_modules(self, enterprise=False, core=False, extra=True, addons_path=False):
+        self._require_env()
+        installed, uninstalled = self.get_addons(enterprise=enterprise, core=core, extra=extra, addons_path=addons_path)
+        pprint('Installed modules   : %s' % installed)
+        pprint('Uninstalled modules : %s' % uninstalled)
+        if uninstalled:
+            sys.exit(-1)
+        else:
+            sys.exit(0)
 
     def _process_python(self, script, context, assets):
         res = exec(script, context)
@@ -723,48 +877,6 @@ class Env(object):
             self.env.invalidate_all()
         else:
             self.env.cache.invalidate()
-
-    def get_param(self, param, default=False):
-        self._require_env()
-        return self.env['ir.config_parameter'].get_param(param, default)
-
-    def set_param(self, param, value):
-        self._require_env()
-        self.env['ir.config_parameter'].set_param(param, value)
-        return self.get_param(param)
-
-    def install(self, addons):
-        self._require_env()
-        if isinstance(addons, basestring):
-            addons = addons.split()
-        addons = self.env['ir.module.module'].search([('name', 'in', addons)])
-        addons_names = addons.mapped('name')
-        self.show(addons, fields=['name', 'state'], title="modules before")
-        self.env['ir.module.module'].search([('name', 'in', addons_names)]).button_immediate_install()
-        self.clear()
-        self.show(addons, fields=['name', 'state'], title="modules after")
-
-    def upgrade(self, addons):
-        self._require_env()
-        if isinstance(addons, basestring):
-            addons = addons.split()
-        addons = self.env['ir.module.module'].search([('name', 'in', addons)])
-        addons_names = addons.mapped('name')
-        self.show(addons, fields=['name', 'state'], title="modules before")
-        self.env['ir.module.module'].search([('name', 'in', addons_names)]).button_immediate_upgrade()
-        self.clear()
-        self.show(addons, fields=['name', 'state'], title="modules after")
-
-    def uninstall(self, addons):
-        self._require_env()
-        if isinstance(addons, basestring):
-            addons = addons.split()
-        addons = self.env['ir.module.module'].search([('name', 'in', addons)])
-        addons_names = addons.mapped('name')
-        self.show(addons, fields=['name', 'state'], title="modules before")
-        self.env['ir.module.module'].search([('name', 'in', addons_names)]).module_uninstall()
-        self.clear()
-        self.show(addons, fields=['name', 'state'], title="modules after")
 
     def dump_db(self, dest=False, zip=True):
         self._require_env()

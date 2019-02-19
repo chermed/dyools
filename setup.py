@@ -5,7 +5,7 @@ from setuptools import setup
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, 'README.rst')).read()
 
-version = '0.7.4'
+version = '0.8.0'
 
 setup(
     name='dyools',
@@ -26,6 +26,7 @@ setup(
         'click',
         'future',
         'pyaml',
+        'odoorpc',
         'python-dateutil',
     ],
     setup_requires=['pytest-runner', ],
