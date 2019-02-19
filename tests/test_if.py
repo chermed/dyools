@@ -32,6 +32,23 @@ class TestIF(TestCase):
         self.assertFalse(IF.is_xmlid([]))
         self.assertFalse(IF.is_xmlid('abcd'))
 
+    def test_is_domain(self):
+        from dyools import IF
+        self.assertTrue(IF.is_domain([]))
+        self.assertTrue(IF.is_domain([('x','=','Y')]))
+        self.assertTrue(IF.is_domain([('x','=','Y'),('x','=','Y')]))
+        self.assertTrue(IF.is_domain(['&','|', ('x','=','Y'),('x','=','Y'),('x','=','Y')]))
+        self.assertTrue(IF.is_domain([('x','=',100)]))
+        self.assertFalse(IF.is_domain(''))
+        self.assertFalse(IF.is_domain('text'))
+        self.assertFalse(IF.is_domain(False))
+        self.assertFalse(IF.is_domain(None))
+        self.assertFalse(IF.is_domain(['f']))
+        self.assertFalse(IF.is_domain([(6, 0, [])]))
+        self.assertFalse(IF.is_domain([(0, 0, {})]))
+        self.assertFalse(IF.is_domain(['&']))
+        self.assertFalse(IF.is_domain(['x','=', 5]))
+
 
     def test_is_iterable(self):
         from dyools import IF
