@@ -597,10 +597,8 @@ class Env(object):
                     records = records.search(['&', ('id', 'in', records.ids)] + record_filter)
                     if not records:
                         return False
-        print('CTX before: %s' % records.env.context)  # TODO
         if record_ctx:
             records = records.with_context(**record_ctx)
-        print('CTX after: %s' % records.env.context)  # TODO
         if record_data:
             assert isinstance(record_data, list), "The data [%s] should be a list" % record_data
             record_data = self._normalize_record_data(records._name, record_data, context, assets)
