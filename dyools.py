@@ -15,6 +15,8 @@ import tempfile
 from contextlib import contextmanager
 from datetime import datetime, date
 from pprint import pprint
+from urllib import parse
+from urllib.parse import urlparse
 
 import click
 import odoorpc
@@ -302,6 +304,15 @@ def contruct_domain_from_str(domain):
         res = domain
     return res
 
+odoorpc_origin_search = odoorpc.models.__getattr__
+def odoorpc_new_search(self, method):
+        result = odoorpc_origin_search.__getattr__(method)
+        if method in ['search', 'create'] and isinstance(result, (int, list)):
+            result = odoorpc_origin_search.browse(result)
+        return result
+odoorpc.models.__getattr__ = odoorpc_new_search
+
+
 
 class Mixin(object):
     def __init__(self):
@@ -388,6 +399,13 @@ class Mixin(object):
         res = self.obj(model, res)
         return res
 
+    def get_company(self):
+        self._require_env()
+        return self.get('res.company', [('id','=',1)], 1, 'id asc')
+
+    def get_companies(self, domain=[], limit=False, order=False):
+        self._require_env()
+        return self.get('res.company', domain, limit, order)
     def get_users(self, domain=[], limit=False, order=False):
         self._require_env()
         return self.get('res.users', domain, limit, order)
@@ -498,12 +516,29 @@ class Mixin(object):
     def uninstall(self, addons):
         self._process_addons_op(addons, 'uninstall')
 
+    def __getitem__(self, item):
+        self._require_env()
+        return self.env[item]
+
 
 class RPC(Mixin):
     def __init__(self, *args, **kwargs):
         items = ['host', 'port', 'dbname', 'user', 'password', 'superadminpassword', 'protocol', 'ssl']
         for i, arg in enumerate(args):
             kwargs[items[i]] = arg
+        server = kwargs.get('server') or (args and args[0]) or False
+        server = kwargs['from_env'] if kwargs.get('from_env') else server
+        if server:
+            url = urlparse(server)
+            if url.scheme and url.netloc and url.query:
+                kwargs.update(dict(parse.parse_qsl(url.query)))
+                url_ssl = False
+                if url.scheme.endswith('s'):
+                    kwargs['ssl'] = True
+                    url_ssl = True
+                url_loc = url.netloc.split(':')
+                kwargs['host'] =  url_loc[0]
+                kwargs['port'] = int(url_loc[1]) if len(url_loc) == 2 else (443 if url_ssl else 80)
         host = kwargs.get('host', os.environ.get('RPC_HOST'))
         port = kwargs.get('port', os.environ.get('RPC_PORT'))
         dbname = kwargs.get('dbname', os.environ.get('RPC_DBNAME'))
