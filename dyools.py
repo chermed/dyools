@@ -14,7 +14,7 @@ import sys
 import tempfile
 from contextlib import contextmanager
 from datetime import datetime, date
-from pprint import pprint
+from functools import partial
 from urllib import parse
 from urllib.parse import urlparse
 
@@ -23,6 +23,7 @@ import odoorpc
 import yaml
 from dateutil.parser import parse as dtparse
 from dateutil.relativedelta import relativedelta
+from terminaltables import SingleTable
 
 try:
     basestring
@@ -34,7 +35,7 @@ try:
 except:
     human_size = lambda r: r
 
-__VERSION__ = '0.8.0'
+__VERSION__ = '0.8.1'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -48,11 +49,15 @@ logger = logging.getLogger(__name__)
 
 def signature(callable):
     if getattr(inspect, 'signature'):
-        pprint(inspect.signature(callable))
+        print(inspect.signature(callable))
     if getattr(inspect, 'getargspec'):
-        pprint(inspect.getargspec(callable))
+        print(inspect.getargspec(callable))
     if getattr(inspect, 'getfullargspec'):
-        pprint(inspect.getfullargspec(callable))
+        print(inspect.getfullargspec(callable))
+
+
+def source(callable):
+    print(inspect.getsource(callable))
 
 
 def date_range(dt_start, dt_stop=False, **kwargs):
@@ -304,15 +309,6 @@ def contruct_domain_from_str(domain):
         res = domain
     return res
 
-odoorpc_origin_search = odoorpc.models.__getattr__
-def odoorpc_new_search(self, method):
-        result = odoorpc_origin_search.__getattr__(method)
-        if method in ['search', 'create'] and isinstance(result, (int, list)):
-            result = odoorpc_origin_search.browse(result)
-        return result
-odoorpc.models.__getattr__ = odoorpc_new_search
-
-
 
 class Mixin(object):
     def __init__(self):
@@ -342,7 +338,13 @@ class Mixin(object):
         self.env['ir.config_parameter'].set_param(param, value)
         return self.get_param(param)
 
-    def show(self, records, fields=[], types=[], title=False):
+    def vlist(self, records, fields=[], types=[], title=False):
+        return self.show(records, fields, types, title, vlist=True)
+
+    def hlist(self, records, fields=[], types=[], title=False):
+        return self.show(records, fields, types, title, vlist=False)
+
+    def show(self, records, fields=[], types=[], title=False, vlist=True):
         self._require_env()
         if isinstance(types, basestring):
             types = types.split()
@@ -352,115 +354,80 @@ class Mixin(object):
         if title:
             print('@@@@ %s @@@@' % title)
         print('Show %s record(s)' % len(records))
+        if isinstance(records, dict):
+            new_records = []
+            for rk, rv in records.items():
+                rv.update(dict(name=rk))
+                new_records.append(rv)
+            records = new_records
         if not fields:
-            if isinstance(records, odoorpc.env.Model):
+            if isinstance(records, odoorpc.models.Model):
                 fields = list(self.env[records._name].fields_get().keys())
+            elif isinstance(records, list):
+                fields = records[0].keys() if records else ['name']
             else:
                 fields = list(records.fields_get().keys())
-        if types:
-            if isinstance(records, odoorpc.env.Model):
+        if types and not isinstance(records, list):
+            if isinstance(records, odoorpc.models.Model):
                 fields_get = self.env[records._name].fields_get()
             else:
                 fields_get = records.fields_get()
             fields = filter(lambda f: '.' not in f and fields_get[f]['type'] in types, fields)
-            fields = [f for f in fields]
+            fields = list(fields)
         if not fields:
             print('Not field is given')
             return False
-        for record in records:
-            print('%s Record [ID=%s][Name=%s]' % ('#' * 40, record.id, getattr(record, 'display_name', '')))
-            for field in fields:
-                print("{:_<40}<{}>".format(field, record.mapped(field) if '.' in field else record[field]))
+        if 'id' not in fields:
+            fields = ['id'] + fields
+        if not isinstance(records, list):
+            records = records.read(fields)
+        if vlist:
+            tbl_data = [fields]
+            for record in records:
+                tbl_data.append([record.get(f, '') for f in fields])
+        else:
+            tbl_data = [['field', 'value']]
+            for record in records:
+                tbl_data.append(['---', '---'])
+                for f in fields:
+                    tbl_data.append([f, record.get(f, '')])
+        table_instance = SingleTable(tbl_data)
+        table_instance.inner_heading_row_border = True
+        table_instance.inner_column_border = False
+        table_instance.outer_border = True
+        print(table_instance.table)
+        print('Total: %s' % (len(tbl_data) - 1))
 
     def path(self, module):
         if isinstance(module, basestring):
             module = importlib.import_module(module)
         return os.path.dirname(module.__file__)
 
-    def get(self, model, domain=[], limit=False, order=False):
+    def get(self, model, domain=[], limit=False, order=False, **kwargs):
         self._require_env()
         records = model
         if isinstance(domain, int):
             domain = [('id', '=', domain)]
         elif isinstance(domain, tuple):
             domain = [domain]
-        if isinstance(domain, basestring):
+        if isinstance(domain, basestring) and len(domain.split()) < 3:
+            domain = [('name', '=', domain)]
+        elif isinstance(domain, basestring):
             domain = contruct_domain_from_str(domain)
+        for d_key, d_value in kwargs.items():
+            domain.append((d_key, '=', d_value))
         if hasattr(self.odoo, 'models') and isinstance(records, self.odoo.models.Model):
             domain = ['&', ('id', 'in', records.ids)] + domain
             model = records._name
-        if isinstance(records, odoorpc.env.Model):
+        if isinstance(records, odoorpc.models.Model):
             domain = ['&', ('id', 'in', records.ids)] + domain
             model = records._name
-        kwargs = {}
-        if limit: kwargs['limit'] = limit
-        if order: kwargs['order'] = order
-        res = self.env[model].search(domain, **kwargs)
+        search_kwargs = {}
+        if limit: search_kwargs['limit'] = limit
+        if order: search_kwargs['order'] = order
+        res = self.env[model].search(domain, **search_kwargs)
         res = self.obj(model, res)
         return res
-
-    def get_company(self):
-        self._require_env()
-        return self.get('res.company', [('id','=',1)], 1, 'id asc')
-
-    def get_companies(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('res.company', domain, limit, order)
-    def get_users(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('res.users', domain, limit, order)
-
-    def get_partners(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('res.partner', domain, limit, order)
-
-    def get_products(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('product.product', domain, limit, order)
-
-    def get_templates(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('product.template', domain, limit, order)
-
-    def get_invoices(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('account.invoice', domain, limit, order)
-
-    def get_sales(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('sale.order', domain, limit, order)
-
-    def get_purchases(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('sale.purchase', domain, limit, order)
-
-    def get_locations(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('stock.location', domain, limit, order)
-
-    def get_quants(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('stock.quant', domain, limit, order)
-
-    def get_pickings(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('stock.picking', domain, limit, order)
-
-    def get_stock_moves(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('stock.move', domain, limit, order)
-
-    def get_account_moves(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('account.move', domain, limit, order)
-
-    def get_account_move_liness(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('account.move.line', domain, limit, order)
-
-    def get_aml(self, domain=[], limit=False, order=False):
-        self._require_env()
-        return self.get('account.move.line', domain, limit, order)
 
     def update_xmlid(self, record, xmlid=False):
         self._require_env()
@@ -483,10 +450,20 @@ class Mixin(object):
             xmlid_obj = xmlid_env.browse(xmlid_obj)
         return xmlid_obj.complete_name
 
+    def config(self, **kwargs):
+        model = 'res.config.settings'
+        res = self.env[model].create(kwargs)
+        res = self.obj(model, res)
+        res.execute()
+
     def obj(self, model, res):
         if isinstance(res, (int, list)):
             return self.env[model].browse(res)
         return res
+
+    def ref(self, xmlid, raise_if_not_found=True):
+        self._require_env()
+        return self.env.ref(xmlid)
 
     def _process_addons_op(self, addons, op):
         self._require_env()
@@ -516,9 +493,120 @@ class Mixin(object):
     def uninstall(self, addons):
         self._process_addons_op(addons, 'uninstall')
 
+    def fields(self, model, fields=[]):
+        self._require_env()
+        if fields and isinstance(fields, basestring):
+            fields = fields.split()
+        if not isinstance(model, basestring):
+            model = model._name
+        if fields:
+            columns = fields
+            ffields = self.env[model].fields_get()
+        else:
+            columns = ['name', 'ttype', 'relation', 'modules']
+            ffields = self.get('ir.model.fields', [('model_id.model', '=', model)])
+        self.show(ffields, columns)
+
+    def menus(self, debug=False, xmlid=False, action=False, user=False):
+        self._require_env()
+        lines = []
+
+        def menu_show(menu, level):
+            space = (' ' * 4 * (level - 1)) if level > 1 else ''
+            if space:
+                space = '|' + space[1:]
+            bar = ('|' + '-' * 3) if level > 0 else ''
+            fmt = "{space}{bar} {name}"
+            action_model = action_domain = action_context = False
+            if xmlid:
+                fmt += '  XMLID={xmlid}'
+            if action:
+                if menu.get('action'):
+                    action_env, action_id = menu.get('action').split(',')
+                    [action_dict] = self.env[action_env].browse(int(action_id)).read(['res_model', 'domain', 'context'])
+                    if action_dict:
+                        action_model = action_dict.get('res_model') or ''
+                        if action_model:
+                            fmt += '  Model={action_model}'
+                        action_domain = action_dict.get('domain') or []
+                        if action_domain:
+                            fmt += '  Domain={action_domain}'
+                        action_context = action_dict.get('context') or {}
+                        if action_context:
+                            fmt += '  Context={action_context}'
+            line = fmt.format(
+                space=space,
+                bar=bar,
+                menu=menu,
+                name=menu['name'],
+                xmlid=menu.get('xmlid') or '',
+                action_model=action_model,
+                action_domain=action_domain,
+                action_context=action_context,
+            )
+            lines.append(line)
+            for m in menu.get('children', []):
+                menu_show(m, level=level + 1)
+
+        if user:
+            user = self.get_users(user)
+            menus = self.env['ir.ui.menu'].sudo(user.id).load_menus(debug=debug)
+        else:
+            menus = self.env['ir.ui.menu'].load_menus(debug=debug)
+        for menu in menus.get('children', []):
+            menu_show(menu, level=0)
+        for line in lines:
+            print(line)
+
     def __getitem__(self, item):
         self._require_env()
         return self.env[item]
+
+    def __getattr__(self, item):
+        mapping = {
+            'warhouses': 'stock.warehouse',
+            'companies': 'res.company',
+            'users': 'res.users',
+            'partners': 'res.partner',
+            'products': 'product.product',
+            'templates': 'product.template',
+            'sales': 'sale.order',
+            'invoices': 'account.invoice',
+            'purchases': 'purchase.order',
+            'quants': 'stock.quant',
+            'pickings': 'stock.picking',
+            'operations': 'stock.picking.type',
+            'locations': 'stock.location',
+            'amls': 'account.move.line',
+        }
+        if item.startswith('get_'):
+            self._require_env()
+            _item = item[4:]
+            model = False
+            if _item in mapping.keys():
+                model = mapping[_item]
+            elif _item.endswith('ies'):
+                _item = _item[:-3] + 'y'
+            elif _item.endswith('s'):
+                _item = _item[:-1]
+            if _item in mapping.keys():
+                model = mapping[_item]
+            model = model or _item.replace('_', '.')
+            if model:
+                return partial(self.get, model)
+        return super(Mixin, self).__getattr__(item)
+
+    def __lt__(self, other):
+        assert isinstance(other, (RPC, Env)), "Backup and restore work for environnements"
+        with Path.tempdir() as tmp:
+            path = other.dump_db(dest=tmp)
+            self.restore_db(path)
+
+    def __gt__(self, other):
+        assert isinstance(other, (RPC, Env)), "Backup and restore work for environnements"
+        with Path.tempdir() as tmp:
+            path = self.dump_db(dest=tmp)
+            other.restore_db(path)
 
 
 class RPC(Mixin):
@@ -527,7 +615,7 @@ class RPC(Mixin):
         for i, arg in enumerate(args):
             kwargs[items[i]] = arg
         server = kwargs.get('server') or (args and args[0]) or False
-        server = kwargs['from_env'] if kwargs.get('from_env') else server
+        server = os.environ.get(kwargs['from_env']) if kwargs.get('from_env') else server
         if server:
             url = urlparse(server)
             if url.scheme and url.netloc and url.query:
@@ -537,7 +625,7 @@ class RPC(Mixin):
                     kwargs['ssl'] = True
                     url_ssl = True
                 url_loc = url.netloc.split(':')
-                kwargs['host'] =  url_loc[0]
+                kwargs['host'] = url_loc[0]
                 kwargs['port'] = int(url_loc[1]) if len(url_loc) == 2 else (443 if url_ssl else 80)
         host = kwargs.get('host', os.environ.get('RPC_HOST'))
         port = kwargs.get('port', os.environ.get('RPC_PORT'))
@@ -562,12 +650,39 @@ class RPC(Mixin):
         self.superadminpassword = superadminpassword
         self.user = user
         self.password = password
+        kwargs.update(dict(
+            host=host,
+            port=port,
+            dbname=dbname,
+            user=user,
+            password=password,
+            superadminpassword=superadminpassword,
+            protocol=protocol,
+            timeout=timeout,
+        ))
+        self.kwargs = kwargs
 
-    def login(self):
+    def login(self, user=False, password=False, dbname=False):
+        if user:
+            self.user = user
+        if password:
+            self.password = password
+        if dbname:
+            self.dbname = dbname
+        self.kwargs.update({
+            'dbname': self.dbname,
+            'user': self.user,
+            'password': self.password,
+        })
         assert self.user and self.password, "please provide the user and the password"
         self.odoo.login(self.dbname, self.user, self.password)
         self.env = self.odoo.env
         return self.env
+
+    def infos(self):
+        print(
+            "Host: {host}\nPort: {port}\nDatabase: {dbname}\nUser: {user}\nPassword: {password}\nSuperAdminPassword: {superadminpassword}\nProtocol: {protocol}\nTimeout: {timeout}".format(
+                **self.kwargs))
 
     def timeout(self, timeout):
         self.odoo.config['timeout'] = timeout
@@ -589,29 +704,34 @@ class RPC(Mixin):
             dump = self.odoo.db.dump(self.superadminpassword, self.dbname)
             with open(path, 'wb') as dump_zip:
                 dump_zip.write(dump.read())
-        pprint('End: %s' % path)
+        print('End: %s' % path)
         size = human_size(os.path.getsize(path))
-        pprint('Size: %s' % size)
+        print('Backup Size: %s' % size)
         return path
 
     def drop_db(self):
-        try:
-            self.odoo.db.drop(self.superadminpassword, self.dbname)
-        except Exception as e:
-            pass
-        pprint('End: dbname=%s is dropped' % self.dbname)
+        self.odoo.db.drop(self.superadminpassword, self.dbname)
+        print('End: dbname=%s is dropped' % self.dbname)
         return self.dbname
 
     def restore_db(self, path, drop=False):
         assert os.path.isfile(path), 'The path [%s] sould be a file' % path
         if drop:
-            self.drop_db()
+            try:
+                self.drop_db()
+            except:
+                print('can not drop the database')
         size = human_size(os.path.getsize(path))
-        pprint('Size: %s' % size)
+        print('Restore Size: %s' % size)
         with open(path, 'rb') as dump_zip:
             self.odoo.db.restore(self.superadminpassword, self.dbname, dump_zip)
-        pprint('End: %s dbname=%s' % (path, self.dbname))
+        print('End: %s dbname=%s' % (path, self.dbname))
         return path
+
+    def list_db(self):
+        res = self.odoo.db.list()
+        print(res)
+        return res
 
 
 class Env(Mixin):
@@ -679,8 +799,8 @@ class Env(Mixin):
     def check_uninstalled_modules(self, enterprise=False, core=False, extra=True, addons_path=False):
         self._require_env()
         installed, uninstalled = self.get_addons(enterprise=enterprise, core=core, extra=extra, addons_path=addons_path)
-        pprint('Installed modules   : %s' % installed)
-        pprint('Uninstalled modules : %s' % uninstalled)
+        print('Installed modules   : %s' % installed)
+        print('Uninstalled modules : %s' % uninstalled)
         if uninstalled:
             sys.exit(-1)
         else:
@@ -759,6 +879,9 @@ class Env(Mixin):
                     record_data[k] = v
         return record_data
 
+    def _process_config(self, value):
+        return self.env['res.config.settings'].create(value).execute()
+
     def _process_record(self, data, context, assets):
         records = self.env[data['model']]
         refs = data.get('refs')
@@ -836,6 +959,9 @@ class Env(Mixin):
             elif key == 'uninstall':
                 print("[%s] ***** Uninstall modules *****" % index)
                 self.uninstall(value)
+            elif key == 'config':
+                print("[%s] ***** Configuration *****" % index)
+                self._process_config(value)
 
     def load_yaml(self, path, assets=False, start=False, stop=False, auto_commit=False):
         def __add_file(f):
@@ -934,28 +1060,33 @@ class Env(Mixin):
             self.odoo.service.db.dump_db(self.dbname, destination, **kwargs)
         if self.list_db_disabled:
             self.list_db = False
-        pprint('End: %s' % path)
+        print('End: %s' % path)
         size = human_size(os.path.getsize(path))
-        pprint('Size: %s' % size)
+        print('Size: %s' % size)
         return path
 
     def drop_db(self):
-        try:
-            self.odoo.service.db.exp_drop(self.dbname)
-        except Exception as e:
-            pass
-        pprint('End: dbname=%s is dropped' % self.dbname)
+        self.odoo.service.db.exp_drop(self.dbname)
+        print('End: dbname=%s is dropped' % self.dbname)
         return self.dbname
 
     def restore_db(self, path, drop=False):
         assert os.path.isfile(path), 'The path [%s] sould be a file' % path
         if drop:
-            self.drop_db()
+            try:
+                self.drop_db()
+            except:
+                print('can not drop the database')
         size = human_size(os.path.getsize(path))
-        pprint('Size: %s' % size)
+        print('Size: %s' % size)
         self.odoo.service.db.restore_db(self.dbname, path)
-        pprint('End: %s dbname=%s' % (path, self.dbname))
+        print('End: %s dbname=%s' % (path, self.dbname))
         return path
+
+    def list_db(self):
+        res = self.odoo.service.db.list_dbs()
+        print(res)
+        return res
 
 
 class Operator(object):
