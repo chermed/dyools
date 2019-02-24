@@ -7,16 +7,31 @@ import calendar
 import importlib
 import inspect
 import logging
-import os
 import re
-import shutil
-import sys
 import tempfile
-from contextlib import contextmanager
+
+try:
+    from io import StringIO
+except Exception as e:
+    from StringIO import StringIO
 from datetime import datetime, date
 from functools import partial
 from urllib import parse
 from urllib.parse import urlparse
+
+import json
+import os
+import shutil
+import subprocess
+import threading
+import time
+import traceback
+from contextlib import contextmanager
+import sys
+from pprint import pprint
+
+import requests
+from flask import Flask, Response, request
 
 import click
 import odoorpc
@@ -35,7 +50,7 @@ try:
 except:
     human_size = lambda r: r
 
-__VERSION__ = '0.8.4'
+__VERSION__ = '0.9.0'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -43,6 +58,7 @@ __DATE__ = ''
 DATE_FORMAT, DATETIME_FORMAT = "%Y-%m-%d", "%Y-%m-%d %H:%M:%S"
 DATE_FR_FORMAT, DATETIME_FR_FORMAT = "%d/%m/%Y", "%d/%m/%Y %H:%M:%S"
 DATE_TYPE, DATETIME_TYPE = "date", "datetime"
+CONSOLE, CMDLINE = 'console', 'cmdline'
 
 logger = logging.getLogger(__name__)
 
@@ -1095,6 +1111,168 @@ class Env(Mixin):
         res = self.odoo.service.db.list_dbs()
         print(res)
         return res
+
+
+class WS(object):
+    def __init__(self, port=5000, env=None, host='0.0.0.0', token=None, name=None, ctx={}):
+        self.app = Flask(name or 'Remote WS')
+        self.app.add_url_rule('/', 'index', self.action, methods=['POST', 'GET'])
+        self.app.add_url_rule('/shutdown', 'shutdown', self.shutdown, methods=['POST', 'GET'])
+        self.port = port
+        self.host = host
+        self.token = token
+        self.env = env
+        self.ctx = ctx
+
+    def _check_permission(self):
+        if self.token is not None:
+            if request.headers.get('WS_TOKEN') != self.token:
+                data = {
+                    'code': 401,
+                    'message': 'Access denied',
+                    'data': 'Access denied',
+                }
+                return self.response(data, 401)
+
+        return False
+
+    def response(self, data, code=200):
+        return Response(
+            json.dumps(data) if isinstance(data, dict) else data,
+            status=code,
+            mimetype='application/json'
+        )
+
+    def _process_cmdline_data(self, data):
+        res = {'data': ''}
+        for cmd_line in data:
+            if isinstance(cmd_line, basestring):
+                cmd_line = cmd_line.split()
+            try:
+                result = subprocess.check_output(cmd_line)
+            except:
+                result = traceback.format_exc()
+            res['data'] = '%s\n%s' % (res['data'], result)
+        return res
+
+    def _process_console_data(self, data):
+        res = {}
+        res.setdefault('data', '')
+        ctx = {
+            'env': self.env,
+            'e': self.env,
+            'os': os,
+            'sys': sys,
+            'shutil': shutil,
+            'pprint': pprint,
+        }
+        ctx.update(self.ctx)
+        with Tool.stdout_in_memory(res):
+            exec('\n'.join(data), ctx)
+        for k, v in ctx.items():
+            try:
+                json.dumps(k)
+                json.dumps(v)
+                res[k] = v
+            except:
+                pass
+        return res
+
+    def action(self):
+        res = self._check_permission()
+        if res:
+            return res
+        data = request.get_json()
+        if CONSOLE in data:
+            res_data = self._process_console_data(data[CONSOLE])
+        elif CMDLINE in data:
+            res_data = self._process_cmdline_data(data[CMDLINE])
+        else:
+            res_data = {'data': 'Not implemented'}
+        return self.response(res_data)
+
+    def start(self):
+        run_kwargs = {}
+        if self.port:
+            run_kwargs['port'] = self.port
+        if self.host:
+            run_kwargs['host'] = self.host
+        thread = threading.Thread(target=self.app.run, args=(), kwargs=run_kwargs)
+        thread.start()
+        self.thread = thread
+
+    def shutdown(self):
+        res = self._check_permission()
+        if res:
+            return res
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
+        return Response()
+
+    def stop(self):
+        time.sleep(1)
+        url = "http://127.0.0.1:%s/shutdown" % self.port
+        requests.post(url)
+
+
+class Consumer(object):
+    def __init__(self, host='127.0.0.1', port=5000, token=None):
+        self.host = host
+        self.port = port
+        self.token = token
+        self.data = []
+
+    def _send(self, mode):
+        assert mode in ['console', 'cmdline'], 'The mode [%s] is not implemented' % mode
+        headers = {'WS_TOKEN': self.token}
+        res = requests.post('http://%s:%s' % (self.host, self.port), json={mode: self.data}, headers=headers)
+        self.result = res.json()
+        return self.result
+
+    def cmdline(self):
+        return self._send(CMDLINE)
+
+    def console(self):
+        return self._send(CONSOLE)
+
+    def print(self):
+        for line in self.result['data'].replace('\\n', '\n').split('\n'):
+            print(line)
+
+    def add(self, *args):
+        self.data.extend(args)
+
+    def flush(self):
+        self.data = []
+        self.result = ""
+
+
+class Tool(object):
+    @classmethod
+    @contextmanager
+    def stdout_in_memory(cls, output):
+        output.setdefault('data', '')
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        result = StringIO()
+        sys.stdout = result
+        sys.stderr = result
+        try:
+            yield
+        except:
+            if output['data']:
+                output['data'] = "%s\n%s" % (output['data'], traceback.format_exc())
+            else:
+                output['data'] = traceback.format_exc()
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+            if output['data']:
+                output['data'] = "%s\n%s" % (output['data'], result.getvalue())
+            else:
+                output['data'] = result.getvalue()
 
 
 class Operator(object):
