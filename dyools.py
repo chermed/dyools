@@ -35,7 +35,7 @@ try:
 except:
     human_size = lambda r: r
 
-__VERSION__ = '0.8.1'
+__VERSION__ = '0.8.4'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -200,6 +200,8 @@ class Date(object):
         return self.relativedelta(**kwargs)
 
     def __sub__(self, other):
+        if isinstance(other, Date):
+            return relativedelta(self.to_datetime(), other.to_datetime())
         return self._apply_add_sub(other, sub=True)
 
     def __add__(self, other):
@@ -596,13 +598,13 @@ class Mixin(object):
                 return partial(self.get, model)
         return super(Mixin, self).__getattr__(item)
 
-    def __lt__(self, other):
+    def __lshift__(self, other):
         assert isinstance(other, (RPC, Env)), "Backup and restore work for environnements"
         with Path.tempdir() as tmp:
             path = other.dump_db(dest=tmp)
             self.restore_db(path)
 
-    def __gt__(self, other):
+    def __rshift__(self, other):
         assert isinstance(other, (RPC, Env)), "Backup and restore work for environnements"
         with Path.tempdir() as tmp:
             path = self.dump_db(dest=tmp)
@@ -710,17 +712,17 @@ class RPC(Mixin):
         return path
 
     def drop_db(self):
-        self.odoo.db.drop(self.superadminpassword, self.dbname)
-        print('End: dbname=%s is dropped' % self.dbname)
+        if self.dbname in self.list_db():
+            self.odoo.db.drop(self.superadminpassword, self.dbname)
+            print('End: dbname=%s is dropped' % self.dbname)
+        else:
+            print('The database [%s] is not found' % self.dbname)
         return self.dbname
 
     def restore_db(self, path, drop=False):
         assert os.path.isfile(path), 'The path [%s] sould be a file' % path
         if drop:
-            try:
-                self.drop_db()
-            except:
-                print('can not drop the database')
+            self.drop_db()
         size = human_size(os.path.getsize(path))
         print('Restore Size: %s' % size)
         with open(path, 'rb') as dump_zip:
@@ -736,6 +738,9 @@ class RPC(Mixin):
 
 class Env(Mixin):
     def __init__(self, env=False, odoo=False, dbname=False, verbose=True):
+        if isinstance(env, basestring):
+            dbname = env
+            env = False
         assert (env and odoo) or (
                 odoo and dbname), "give an existing environnement or specify odoo and dbname for creating a new one"
         self.odoo = odoo
@@ -1062,12 +1067,15 @@ class Env(Mixin):
             self.list_db = False
         print('End: %s' % path)
         size = human_size(os.path.getsize(path))
-        print('Size: %s' % size)
+        print('Backup Size: %s' % size)
         return path
 
     def drop_db(self):
-        self.odoo.service.db.exp_drop(self.dbname)
-        print('End: dbname=%s is dropped' % self.dbname)
+        if self.dbname in self.list_db():
+            self.odoo.service.db.exp_drop(self.dbname)
+            print('End: dbname=%s is dropped' % self.dbname)
+        else:
+            print('The database [%s] is not found' % self.dbname)
         return self.dbname
 
     def restore_db(self, path, drop=False):
@@ -1078,7 +1086,7 @@ class Env(Mixin):
             except:
                 print('can not drop the database')
         size = human_size(os.path.getsize(path))
-        print('Size: %s' % size)
+        print('Restore Size: %s' % size)
         self.odoo.service.db.restore_db(self.dbname, path)
         print('End: %s dbname=%s' % (path, self.dbname))
         return path
