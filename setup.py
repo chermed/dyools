@@ -5,7 +5,7 @@ from setuptools import setup
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, 'README.rst')).read()
 
-version = '0.9.0'
+version = '0.10.0'
 
 setup(
     name='dyools',
@@ -28,10 +28,15 @@ setup(
         'pyaml',
         'odoorpc',
         'python-dateutil',
-        'terminaltables',
         'flask',
+        'prettytable',
+        'click',
     ],
     setup_requires=['pytest-runner', ],
     tests_require=['pytest', ],
+    entry_points='''
+        [console_scripts]
+        dyools_agent=dyools:start_agent
+    ''',
 
 )

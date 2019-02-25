@@ -10,6 +10,8 @@ import logging
 import re
 import tempfile
 
+from prettytable import PrettyTable
+
 try:
     from io import StringIO
 except Exception as e:
@@ -38,7 +40,6 @@ import odoorpc
 import yaml
 from dateutil.parser import parse as dtparse
 from dateutil.relativedelta import relativedelta
-from terminaltables import SingleTable
 
 try:
     basestring
@@ -50,7 +51,7 @@ try:
 except:
     human_size = lambda r: r
 
-__VERSION__ = '0.9.0'
+__VERSION__ = '0.10.0'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -59,6 +60,7 @@ DATE_FORMAT, DATETIME_FORMAT = "%Y-%m-%d", "%Y-%m-%d %H:%M:%S"
 DATE_FR_FORMAT, DATETIME_FR_FORMAT = "%d/%m/%Y", "%d/%m/%Y %H:%M:%S"
 DATE_TYPE, DATETIME_TYPE = "date", "datetime"
 CONSOLE, CMDLINE = 'console', 'cmdline'
+BUILTINS = '__builtins__'
 
 logger = logging.getLogger(__name__)
 
@@ -362,7 +364,13 @@ class Mixin(object):
     def hlist(self, records, fields=[], types=[], title=False):
         return self.show(records, fields, types, title, vlist=False)
 
+    def data(self, records, fields=[], types=[], title=False, vlist=True):
+        return self._show_data(records, fields, types, title, vlist, _show_data=False)
+
     def show(self, records, fields=[], types=[], title=False, vlist=True):
+        return self._show_data(records, fields, types, title, vlist, _show_data=True)
+
+    def _show_data(self, records, fields=[], types=[], title=False, vlist=True, _show_data=True):
         self._require_env()
         if isinstance(types, basestring):
             types = types.split()
@@ -391,30 +399,35 @@ class Mixin(object):
             else:
                 fields_get = records.fields_get()
             fields = filter(lambda f: '.' not in f and fields_get[f]['type'] in types, fields)
-            fields = list(fields)
-        if not fields:
-            print('Not field is given')
-            return False
-        if 'id' not in fields:
-            fields = ['id'] + fields
-        if not isinstance(records, list):
-            records = records.read(fields)
-        if vlist:
-            tbl_data = [fields]
-            for record in records:
-                tbl_data.append([record.get(f, '') for f in fields])
+        fields = list(fields)
+        if fields:
+            if 'id' not in fields:
+                fields = ['id'] + fields
+            if not isinstance(records, list):
+                records = records.read(fields)
+            if vlist:
+                tbl_data = [fields]
+                for record in records:
+                    tbl_data.append([record.get(f, '') for f in fields])
+            else:
+                tbl_data = [['field', 'value']]
+                for record in records:
+                    tbl_data.append(['---', '---'])
+                    for f in fields:
+                        tbl_data.append([f, record.get(f, '')])
+        if _show_data:
+            if not fields:
+                print('No field found')
+            else:
+                if tbl_data:
+                    x = PrettyTable()
+                    x.field_names = tbl_data[0]
+                    for item in tbl_data[1:]:
+                        x.add_row(item)
+                    print(x)
+                print('Total: %s' % (len(tbl_data) - 1))
         else:
-            tbl_data = [['field', 'value']]
-            for record in records:
-                tbl_data.append(['---', '---'])
-                for f in fields:
-                    tbl_data.append([f, record.get(f, '')])
-        table_instance = SingleTable(tbl_data)
-        table_instance.inner_heading_row_border = True
-        table_instance.inner_column_border = False
-        table_instance.outer_border = True
-        print(table_instance.table)
-        print('Total: %s' % (len(tbl_data) - 1))
+            return tbl_data
 
     def path(self, module):
         if isinstance(module, basestring):
@@ -1118,25 +1131,37 @@ class WS(object):
         self.app = Flask(name or 'Remote WS')
         self.app.add_url_rule('/', 'index', self.action, methods=['POST', 'GET'])
         self.app.add_url_rule('/shutdown', 'shutdown', self.shutdown, methods=['POST', 'GET'])
+        self.app.add_url_rule('/ping', 'ping', self.ping, methods=['POST', 'GET'])
+        self.app.add_url_rule('/info', 'info', self.info, methods=['POST', 'GET'])
         self.port = port
         self.host = host
         self.token = token
         self.env = env
-        self.ctx = ctx
+        self.ctx = {}
+        self.ctx = {
+            'env': self.env,
+            'e': self.env,
+            'os': os,
+            'sys': sys,
+            'shutil': shutil,
+            'pprint': pprint,
+        }
+        self.ctx.update(ctx)
 
     def _check_permission(self):
         if self.token is not None:
             if request.headers.get('WS_TOKEN') != self.token:
+                code = 401
                 data = {
-                    'code': 401,
-                    'message': 'Access denied',
+                    'code': code,
                     'data': 'Access denied',
                 }
-                return self.response(data, 401)
+                return self.response(data, code)
 
         return False
 
     def response(self, data, code=200):
+        data.setdefault('code', code)
         return Response(
             json.dumps(data) if isinstance(data, dict) else data,
             status=code,
@@ -1158,18 +1183,11 @@ class WS(object):
     def _process_console_data(self, data):
         res = {}
         res.setdefault('data', '')
-        ctx = {
-            'env': self.env,
-            'e': self.env,
-            'os': os,
-            'sys': sys,
-            'shutil': shutil,
-            'pprint': pprint,
-        }
-        ctx.update(self.ctx)
+
         with Tool.stdout_in_memory(res):
-            exec('\n'.join(data), ctx)
-        for k, v in ctx.items():
+            script = '\n'.join(data)
+            exec(script, self.ctx)
+        for k, v in self.ctx.items():
             try:
                 json.dumps(k)
                 json.dumps(v)
@@ -1183,12 +1201,37 @@ class WS(object):
         if res:
             return res
         data = request.get_json()
+        code = 200
         if CONSOLE in data:
             res_data = self._process_console_data(data[CONSOLE])
         elif CMDLINE in data:
             res_data = self._process_cmdline_data(data[CMDLINE])
         else:
-            res_data = {'data': 'Not implemented'}
+            code = 500
+            res_data = {'data': 'Not implemented', 'code': code}
+        return self.response(res_data, code)
+
+    def info(self):
+        res = self._check_permission()
+        if res:
+            return res
+        data = {}
+        for k, v in self.ctx.items():
+            if k == BUILTINS:
+                continue
+            try:
+                k, v = str(k), str(v)
+                data[k] = v
+            except:
+                pass
+        res_data = {'data': data}
+        return self.response(res_data)
+
+    def ping(self):
+        res = self._check_permission()
+        if res:
+            return res
+        res_data = {'data': 'It works !'}
         return self.response(res_data)
 
     def start(self):
@@ -1206,10 +1249,12 @@ class WS(object):
         if res:
             return res
         func = request.environ.get('werkzeug.server.shutdown')
+        code = 200
         if func is None:
-            raise RuntimeError('Not running with the Werkzeug Server')
+            code = 500
+            return self.response({'code': code, 'data': 'Not running with the Werkzeug Server'}, code)
         func()
-        return Response()
+        return self.response({'code': code, 'data': 'The server is down'}, code)
 
     def stop(self):
         time.sleep(1)
@@ -1231,6 +1276,24 @@ class Consumer(object):
         self.result = res.json()
         return self.result
 
+    def stop(self):
+        headers = {'WS_TOKEN': self.token}
+        res = requests.post('http://%s:%s/shutdown' % (self.host, self.port), json={}, headers=headers)
+        self.result = res.json()
+        return self.result
+
+    def ping(self):
+        headers = {'WS_TOKEN': self.token}
+        res = requests.post('http://%s:%s/ping' % (self.host, self.port), json={}, headers=headers)
+        self.result = res.json()
+        return self.result
+
+    def info(self):
+        headers = {'WS_TOKEN': self.token}
+        res = requests.post('http://%s:%s/info' % (self.host, self.port), json={}, headers=headers)
+        self.result = res.json()
+        return self.result
+
     def cmdline(self):
         return self._send(CMDLINE)
 
@@ -1238,8 +1301,12 @@ class Consumer(object):
         return self._send(CONSOLE)
 
     def print(self):
-        for line in self.result['data'].replace('\\n', '\n').split('\n'):
-            print(line)
+        data = self.result['data']
+        if isinstance(data, basestring):
+            for line in data.replace('\\n', '\n').split('\n'):
+                print(line)
+        else:
+            pprint(data)
 
     def add(self, *args):
         self.data.extend(args)
@@ -1247,6 +1314,30 @@ class Consumer(object):
     def flush(self):
         self.data = []
         self.result = ""
+
+    def __getattr__(self, item):
+        if item.startswith('table_'):
+            item = item[6:]
+            tbl_data = self.result[item]
+            x = PrettyTable()
+            x.field_names = tbl_data[0]
+            for item in tbl_data[1:]:
+                x.add_row(item)
+            print(x)
+            print('Total: %s' % (len(tbl_data) - 1))
+            return lambda: 'End'
+        elif item.startswith('print_'):
+            item = item[6:]
+            tbl_data = self.result[item]
+            pprint(tbl_data)
+            print('Total: %s' % len(tbl_data))
+            return lambda: 'End'
+        elif item.startswith('data_'):
+            item = item[6:]
+            tbl_data = self.result[item]
+            return lambda: tbl_data
+        else:
+            return super(Consumer, self).__getattr__(item)
 
 
 class Tool(object):
@@ -1533,3 +1624,25 @@ class File(object):
             return round(size / (1024. * 1024.), 2), 'MB'
         else:
             return round(size, 2), 'B'
+
+
+@click.command()
+@click.option('--logfile', '-l',
+              type=click.Path(file_okay=True, dir_okay=False, writable=True, readable=True, resolve_path=True,
+                              allow_dash=True), required=False, )
+@click.option('--host', '-h', type=click.STRING, default='0.0.0.0')
+@click.option('--port', '-p', type=click.INT, default=5000)
+@click.option('--token', '-t', type=click.STRING, default=None)
+@click.option('--name', '-n', type=click.STRING, default=None)
+@click.pass_context
+def start_agent(ctx, logfile, host, port, token, name):
+    """Command line for agent"""
+    ws_kwargs = {}
+    if host: ws_kwargs['host'] = host
+    if port: ws_kwargs['port'] = port
+    if token: ws_kwargs['token'] = token
+    if name: ws_kwargs['name'] = name
+    ws = WS(**ws_kwargs)
+    if logfile:
+        logging.basicConfig(filename=logfile, level=logging.DEBUG)
+    ws.start()
