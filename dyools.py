@@ -51,7 +51,7 @@ try:
 except:
     human_size = lambda r: r
 
-__VERSION__ = '0.10.0'
+__VERSION__ = '0.10.1'
 __AUTHOR__ = ''
 __WEBSITE__ = ''
 __DATE__ = ''
@@ -811,6 +811,10 @@ class Env(Mixin):
     def get_addons(self, enterprise=False, core=False, extra=True, addons_path=False):
         self._require_env()
         installed, uninstalled = [], []
+        if not addons_path:
+            addons_path = []
+        elif isinstance(addons_path, basestring):
+            addons_path = addons_path.split(',')
         addons_path = addons_path or self.conf['addons_path'].split(',')
         for path in addons_path:
             dirs = [ddir for ddir in os.listdir(path) if os.path.isdir(os.path.join(path, ddir))]
@@ -1228,9 +1232,6 @@ class WS(object):
         return self.response(res_data)
 
     def ping(self):
-        res = self._check_permission()
-        if res:
-            return res
         res_data = {'data': 'It works !'}
         return self.response(res_data)
 
