@@ -25,11 +25,13 @@ class Xlsx(object):
         sheet_data.setdefault('data', [])
         sheet_data.setdefault('header', [])
         sheet_data.setdefault('headers', [])
+        sheet_data.setdefault('main_header', [])
         sheet_data.setdefault('footer', {})
         sheet_data.setdefault('row', 0)
         sheet_data.setdefault('column', 0)
         sheet_data.setdefault('max_header', 0)
         sheet_data.setdefault('has_footer_name', False)
+        sheet_data.setdefault('has_totals', False)
         self.current_sheet = sheet_data[self.SHEET_NAME]
         return sheet_data
 
@@ -60,6 +62,7 @@ class Xlsx(object):
         sheet_data['headers'].append(header)
         sheet_data['header'] = header
         sheet_data['max_header'] = len(header) if len(header) > sheet_data['max_header'] else sheet_data['max_header']
+        sheet_data['main_header'] = header if len(header) == sheet_data['max_header'] else sheet_data.get('main_header', [])
 
     def add_footer_name(self, name=False, sheet_name=False):
         sheet_data = self._create_and_get_sheet(sheet_name)
@@ -69,6 +72,10 @@ class Xlsx(object):
     def add_footer(self, column, operator, sheet_name=False):
         sheet_data = self._create_and_get_sheet(sheet_name)
         sheet_data['footer'].update({column: operator})
+
+    def add_totals(self, sheet_name=False):
+        sheet_data = self._create_and_get_sheet(sheet_name)
+        sheet_data['has_totals'] = True
 
     def add_line(self, line, sheet_name=False):
         assert isinstance(line, list), "The line should be a list"
@@ -127,13 +134,17 @@ class Xlsx(object):
             footer_format.set_border()
             footer_format.set_bg_color('yellow')
             col = sheet['column']
-            for i in range(sheet['max_header']):
-                worksheet.write(row, col, '', footer_format)
-                col += 1
-            for column, operator in sheet['footer'].items():
-                idx, col = infos[column]
-                cell_value = self._apply_op(idx, operator, sheet_name)
-                worksheet.write(row, col, cell_value, footer_format)
+            if sheet['has_totals']:
+                for header in sheet['main_header']:
+                    sheet['footer'][header] = self.SUM
+            if sheet['footer']:
+                for i in range(sheet['max_header']):
+                    worksheet.write(row, col, '', footer_format)
+                    col += 1
+                for column, operator in sheet['footer'].items():
+                    idx, col = infos[column]
+                    cell_value = self._apply_op(idx, operator, sheet_name)
+                    worksheet.write(row, col, cell_value, footer_format)
             col = sheet['column']
             if sheet['has_footer_name']:
                 worksheet.write(row, col, sheet['footer_name'], footer_format)
@@ -157,6 +168,7 @@ x.add_line([20, 30, 20, 30, 20])
 x.add_footer('B3', Xlsx.AVG)
 x.add_footer('B4', x.SUM)
 x.add_footer_name('TOTOOOS')
+x.add_totals()
 x.set_offset(2, 3)
 x.set_sheet('Nouvelle feuille')
 x.add_header(['Nom', 'Age', 'MM'])
@@ -171,6 +183,9 @@ x.add_footer('X2', Xlsx.AVG)
 x.add_footer('X3', Xlsx.AVG)
 x.add_footer('X4', x.SUM)
 x.add_footer('MM', x.AVG)
+x.set_sheet('Juste data')
+x.add_line([10, 40, 10, 40, 10])
+x.add_line([12, 32, 12, 32, 12])
 
 from pprint import pprint
 
