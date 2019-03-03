@@ -93,49 +93,57 @@ def date_range(dt_start, dt_stop=False, **kwargs):
 
 
 class Date(object):
+    DATE_HASH_FORMAT = '%Y%m%d'
+    DATETIME_HASH_FORMAT = '%Y%m%d_%H%M%S'
+    DATE_FORMAT = "%Y-%m-%d"
+    DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+    DATE_FR_FORMAT="%d/%m/%Y"
+    DATETIME_FR_FORMAT = "%d/%m/%Y %H:%M:%S"
     def __init__(self, *args, **kwargs):
-        assert args or kwargs, "arguments should be a date or parameters for datetime"
-        ttype = dt = False
+        dt = False
+        fmt = kwargs.pop('fmt', False)
         if len(args) == 1:
             item = args[0]
             if isinstance(item, basestring):
-                if len(item) == 10:
-                    dt = datetime.strptime(item, DATE_FORMAT)
-                    ttype = DATE_TYPE
+                if fmt:
+                    dt = datetime.strptime(item, fmt)
+                elif len(item) == 10:
+                    fmt = self.DATE_FORMAT
+                    dt = datetime.strptime(item, fmt)
                 elif len(item) == 19:
-                    dt = datetime.strptime(item, DATETIME_FORMAT)
-                    ttype = DATETIME_TYPE
+                    fmt = self.DATETIME_FORMAT
+                    dt = datetime.strptime(item, fmt)
                 else:
                     dt = dtparse(item)
                     if ':' in item:
-                        ttype = DATETIME_TYPE
+                        fmt = self.DATETIME_FORMAT
                     else:
-                        ttype = DATE_TYPE
+                        fmt = self.DATE_FORMAT
             elif isinstance(item, datetime):
                 dt = item
-                ttype = DATETIME_TYPE
+                fmt = fmt or self.DATETIME_FORMAT
             elif isinstance(item, date):
                 dt = datetime(item.year, item.month, item.day)
-                ttype = DATE_TYPE
+                fmt = fmt or self.DATE_FORMAT
             elif isinstance(item, Date):
                 dt = item.dt
-                ttype = item.ttype
+                fmt = fmt or item.fmt
         else:
-            dt = datetime(*args, **kwargs)
-            if len(args) + len(kwargs) == 3:
-                ttype = DATE_TYPE
+            if not args and not kwargs:
+                dt =datetime.now()
             else:
-                ttype = DATETIME_FORMAT
-        assert ttype and dt, "The format of date [%s] is not valid" % item
+                dt = datetime(*args, **kwargs)
+            if len(args) + len(kwargs) == 3:
+                fmt = fmt or self.DATE_FORMAT
+            else:
+                fmt = fmt or self.DATETIME_FORMAT
+        assert fmt and dt, "The format of date [%s] is not valid" % item
         self.dt = dt
-        self.ttype = ttype
+        self.fmt = fmt
 
     def relativedelta(self, **kwargs):
         self.apply(**kwargs)
-        if self.ttype == DATE_TYPE:
-            return self.dt.strftime(DATE_FORMAT)
-        else:
-            return self.dt.strftime(DATETIME_FORMAT)
+        return self.dt.strftime(self.fmt)
 
     def apply(self, **kwargs):
         sub = kwargs.get('sub', False) == True
@@ -146,19 +154,17 @@ class Date(object):
             self.dt = self.dt + relativedelta(**kwargs)
         return self
 
+    def set_format(self, fmt):
+        self.fmt = fmt
+        return self
+
     def first_day(self):
         dt = self.dt + relativedelta(day=1)
-        if self.ttype == DATE_TYPE:
-            return dt.strftime(DATE_FORMAT)
-        else:
-            return dt.strftime(DATETIME_FORMAT)
+        return dt.strftime(self.fmt)
 
     def last_day(self):
         dt = self.dt + relativedelta(day=calendar.monthrange(self.dt.year, self.dt.month)[1])
-        if self.ttype == DATE_TYPE:
-            return dt.strftime(DATE_FORMAT)
-        else:
-            return dt.strftime(DATETIME_FORMAT)
+        return dt.strftime(self.fmt)
 
     def to_datetime(self):
         return self.dt
@@ -166,17 +172,14 @@ class Date(object):
     def to_date(self):
         return self.dt.date()
 
-    def to_str(self):
-        if self.ttype == DATE_TYPE:
-            return self.dt.strftime(DATE_FORMAT)
-        else:
-            return self.dt.strftime(DATETIME_FORMAT)
+    def to_str(self, fmt=False):
+        return self.dt.strftime(fmt or self.fmt)
 
     def to_fr(self):
-        if self.ttype == DATE_TYPE:
-            return self.dt.strftime(DATE_FR_FORMAT)
+        if self.fmt == self.DATE_FORMAT:
+            return self.dt.strftime(self.DATE_FR_FORMAT)
         else:
-            return self.dt.strftime(DATETIME_FR_FORMAT)
+            return self.dt.strftime(self.DATETIME_FR_FORMAT)
 
     def is_between(self, dt_start, dt_stop):
         dt_start = Date(dt_start) if dt_start else False
@@ -226,16 +229,10 @@ class Date(object):
         return self._apply_add_sub(other)
 
     def __str__(self):
-        if self.ttype == DATE_TYPE:
-            return self.dt.strftime(DATE_FORMAT)
-        else:
-            return self.dt.strftime(DATETIME_FORMAT)
+        return self.dt.strftime(self.fmt)
 
     def __repr__(self):
-        if self.ttype == DATE_TYPE:
-            return self.dt.strftime(DATE_FORMAT)
-        else:
-            return self.dt.strftime(DATETIME_FORMAT)
+        return self.dt.strftime(self.fmt)
 
     def __lt__(self, other):
         return self.to_str() < Date(other).to_str()

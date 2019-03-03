@@ -53,3 +53,12 @@ class TestDate(TestCase):
         self.assertFalse(Date(d3).is_between(d1, d2))
         self.assertFalse(Date(d2).is_between(d1, d1))
         self.assertFalse(Date(d2).is_between(False, d1))
+
+    def test_today(self):
+        from dyools import Date
+        from datetime import date
+        d1 = "2019-02-20"
+        self.assertEqual(Date().to_date(), date.today())
+        self.assertEqual(Date().to_str()[:10], date.today().strftime(Date.DATE_FORMAT))
+        self.assertEqual(Date(d1).to_str(fmt=Date.DATE_HASH_FORMAT), "20190220")
+
