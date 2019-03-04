@@ -4,13 +4,12 @@ from operator import itemgetter
 import xlrd as xlrd
 from past.types import basestring
 
-from dyools import Operator, Date
+from dyools import Date
 
 
 class Table(object):
     def __init__(self, data):
         self.data = data
-        self._data = {}
         self.col_idx = []
         self.row_idx = []
         self.nrows = len(data)
@@ -50,7 +49,15 @@ class Table(object):
         self.index_rows = rows
         self.index_cols = cols
 
-    def get_value(self, row_idx=[], col_idx=[]):
+    def get_value_by_idx(self, row_idx, col_idx):
+        assert isinstance(row_idx, int) and isinstance(col_idx, int), "the index should ba an integer"
+        assert row_idx < self.nrows, "the index should is out of range"
+        assert col_idx < self.ncols, "the index should is out of range"
+        return self.data[row_idx][col_idx]
+
+
+
+    def get_value_by_row_col(self, row_idx=[], col_idx=[]):
         if isinstance(row_idx, basestring):
             row_idx = row_idx.split(';')
         if isinstance(col_idx, basestring):
@@ -83,7 +90,10 @@ class Table(object):
 
     def __getitem__(self, item):
         if isinstance(item, slice):
-            return self.get_value(item.start, item.stop)
+            if isinstance(item.start, int) and isinstance(item.stop, int):
+                return self.get_value_by_idx(item.start, item.stop)
+            else:
+                return self.get_value_by_row_col(item.start, item.stop)
         elif isinstance(item, int):
             return self.get_col_by_idx(item)
         raise IndexError()
@@ -231,8 +241,10 @@ table_3.set_col_idx([0, 1])
 table_3.set_row_idx([1])
 #pprint(table_3.index_cols)
 #pprint(table_3.index_rows)
-pprint(table_3.get_value(['40 - 50 kg'], ['10 - 20 mm', '21 - 22 µ']))
-pprint(table_3.get_value(['71 - 80 kg'], ['21 - 30 mm', '23 - 24 µ']))
+#pprint(table_3.get_value())
+pprint(table_3.get_value_by_row_col(['40 - 50 kg'], ['10 - 20 mm', '21 - 22 µ']))
+pprint(table_3.get_value_by_row_col(['71 - 80 kg'], ['21 - 30 mm', '23 - 24 µ']))
 pprint(table_3[['71 - 80 kg']:['21 - 30 mm', '23 - 24 µ']])
-
+pprint(table_3.get_value_by_idx(5,2))
+pprint(table_3[5:2])
 
