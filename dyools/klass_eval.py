@@ -1,5 +1,7 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
+
 from past.builtins import basestring
+
 
 class Eval(object):
     def __init__(self, data, context):
@@ -13,7 +15,7 @@ class Eval(object):
             elif isinstance(value, dict):
                 _d = {}
                 for _k, _v in value.items():
-                    _d[_k] = parse(_v, ctx)
+                    _d[parse(_k, ctx)] = parse(_v, ctx)
                 return _d
             elif isinstance(value, basestring):
                 origin = value
@@ -28,4 +30,3 @@ class Eval(object):
                 return value
 
         return parse(self.data, self.context)
-

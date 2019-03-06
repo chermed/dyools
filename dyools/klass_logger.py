@@ -10,7 +10,7 @@ class Logger(object):
     def _clean_msg(self, msg):
         if not isinstance(msg, basestring):
             try:
-                msg = str(msg)
+                msg = '{}'.format(msg)
             except:
                 pass
         return msg

@@ -9,8 +9,6 @@ import odoorpc
 from past.builtins import basestring
 from prettytable import PrettyTable
 
-from .klass_odoo_env import Env
-from .klass_odoo_rpc import RPC
 from .klass_path import Path
 from .klass_tool import Tool
 
@@ -315,13 +313,13 @@ class Mixin(object):
         return super(Mixin, self).__getattr__(item)
 
     def __lshift__(self, other):
-        assert isinstance(other, (RPC, Env)), "Backup and restore work for environnements"
+        assert isinstance(other, Mixin), "Backup and restore work for environnements"
         with Path.tempdir() as tmp:
             path = other.dump_db(dest=tmp)
-            self.restore_db(path)
+            self.restore_db(path, drop=True)
 
     def __rshift__(self, other):
-        assert isinstance(other, (RPC, Env)), "Backup and restore work for environnements"
+        assert isinstance(other, Mixin), "Backup and restore work for environnements"
         with Path.tempdir() as tmp:
             path = self.dump_db(dest=tmp)
-            other.restore_db(path)
+            other.restore_db(path, drop=True)

@@ -1,9 +1,12 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+from io import BytesIO
+
 import xlsxwriter
 from past.builtins import basestring
 
-from .klass_serie import Serie
+from dyools import Date
+from dyools import Serie
 
 
 class XlsWriter(object):
@@ -14,9 +17,9 @@ class XlsWriter(object):
     DEFAULT_SHEET_NAME = 'Feuil1'
     SHEET_NAME = 'sheet_name'
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.data = []
-        self.filename = "File_TODO.xlsx"
+        self.filename = kwargs.get('filename', 'file_{}.xlsx'.format(Date(fmt=Date.DATETIME_HASH_FORMAT)))
         self.current_sheet = False
         self.num_format = '#,##0.00'
         self.format_header = {'bold': True, 'bg_color': '#D9D9D9', 'border': True}
@@ -26,6 +29,7 @@ class XlsWriter(object):
         self.format_float = {'num_format': '#,##0.00', 'border': True}
         self.column_str_width = 30
         self.column_nonstr_width = 16
+        self.workbook_options = kwargs.get('options', {})
 
     def _create_and_get_sheet(self, sheet_name=False):
         sheet_name = sheet_name or self.current_sheet or self.DEFAULT_SHEET_NAME
@@ -135,11 +139,10 @@ class XlsWriter(object):
         for line in data:
             for i, cell in enumerate(line):
                 sheet_data['types'].setdefault(i, 'str')
-                if sheet_data['types'][i] == 'str':
-                    if isinstance(cell, int):
-                        sheet_data['types'][i] = 'int'
-                    elif isinstance(cell, float):
-                        sheet_data['types'][i] = 'float'
+                if isinstance(cell, int):
+                    sheet_data['types'][i] = 'int' if sheet_data['types'][i] != 'float' else 'float'
+                elif isinstance(cell, float):
+                    sheet_data['types'][i] = 'float'
         return sheet_data['types']
 
     def get(self):
@@ -164,7 +167,8 @@ class XlsWriter(object):
                 column = sheet['main_header'].index(column) if column in sheet['main_header'] else -1
             return sheet['types'].get(column, default)
 
-        workbook = xlsxwriter.Workbook(self.filename)
+        file_data = BytesIO()
+        workbook = xlsxwriter.Workbook(file_data, self.workbook_options)
         for sheet in self.data:
             col = sheet['column']
             row = sheet['row']
@@ -222,6 +226,8 @@ class XlsWriter(object):
                 write_value(row, col, sheet['footer_name'], 'footer')
             row += 1
         workbook.close()
+        file_data.seek(0)
+        return file_data.read()
 
     def __getitem__(self, item):
         sheet_data = self._create_and_get_sheet()
@@ -231,5 +237,5 @@ class XlsWriter(object):
                 if header == item:
                     idx = i
                     break
-        assert isinstance(idx, int), "The index [%s] should be integer" % idx
+        assert isinstance(idx, int), "The index [%s] should be an integer" % idx
         return Serie([x[idx] for x in sheet_data['data']])

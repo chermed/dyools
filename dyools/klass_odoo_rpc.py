@@ -7,8 +7,8 @@ from urllib.parse import urlparse
 
 import odoorpc
 
-from .klass_file import File
 from .klass_odoo_mixin import Mixin
+from .klass_path import Path
 
 
 class RPC(Mixin):
@@ -107,7 +107,7 @@ class RPC(Mixin):
             with open(path, 'wb') as dump_zip:
                 dump_zip.write(dump.read())
         print('End: %s' % path)
-        size = File.get_size_str(path)
+        size = Path.size_str(path)
         print('Backup Size: %s' % size)
         return path
 
@@ -120,10 +120,10 @@ class RPC(Mixin):
         return self.dbname
 
     def restore_db(self, path, drop=False):
-        assert os.path.isfile(path), 'The path [%s] sould be a file' % path
+        assert os.path.isfile(path), 'The path [%s] should be a file' % path
         if drop:
             self.drop_db()
-        size = File.get_size_str(path)
+        size = Path.size_str(path)
         print('Restore Size: %s' % size)
         with open(path, 'rb') as dump_zip:
             self.odoo.db.restore(self.superadminpassword, self.dbname, dump_zip)

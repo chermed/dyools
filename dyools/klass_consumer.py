@@ -6,6 +6,8 @@ import requests
 from past.builtins import basestring
 from prettytable import PrettyTable
 
+from .klass_tool import Tool
+
 CONSOLE, CMDLINE = 'console', 'cmdline'
 
 
@@ -41,11 +43,21 @@ class Consumer(object):
         self.result = res.json()
         return self.result
 
-    def cmdline(self):
-        return self._send(CMDLINE)
+    def cmdline(self, *args):
+        if args:
+            with Tool.protecting_attributes(self, ['data'], data=[]):
+                self.add(*args)
+                return self._send(CMDLINE)
+        else:
+            return self._send(CMDLINE)
 
-    def console(self):
-        return self._send(CONSOLE)
+    def console(self, *args):
+        if args:
+            with Tool.protecting_attributes(self, ['data'], data=[]):
+                self.add(*args)
+                return self._send(CONSOLE)
+        else:
+            return self._send(CONSOLE)
 
     def print(self):
         data = self.result['data']

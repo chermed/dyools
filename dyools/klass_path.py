@@ -74,6 +74,26 @@ class Path(object):
                     os.remove(full_path)
 
     @classmethod
-    def delete_path(cls, path):
+    def delete_dir(cls, path):
         if os.path.exists(path):
             shutil.rmtree(path)
+
+    @classmethod
+    def size_str(cls, path, unit='mb'):
+        size, u = cls.size(path, unit=unit)
+        return '{} {}'.format(size, u)
+
+    @classmethod
+    def size(cls, path, unit='mb'):
+        total_size = 0
+        if os.path.isfile(path):
+            total_size = os.path.getsize(path)
+        else:
+            for dirpath, dirnames, filenames in os.walk(path):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    total_size += os.path.getsize(fp) if os.path.isfile(fp) else 0
+        if unit == 'mb':
+            return round(total_size / (1024. * 1024.), 2), 'MB'
+        else:
+            return round(total_size, 2), 'B'

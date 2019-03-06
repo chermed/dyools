@@ -102,7 +102,7 @@ class XlsReader(object):
             self.data[name]['tables'].append(Table(table))
 
     def read(self, sheets=[], filename=False):
-        self.filename = filename or self.filename
+        filename = filename or self.filename
         sheets = sheets or self.sheets
         sheets = self._nomalize_sheets(sheets)
         book = xlrd.open_workbook(self.filename, formatting_info=True)
@@ -112,6 +112,7 @@ class XlsReader(object):
         assert os.path.isfile(filename), "The file [%s] is not found" % filename
         assert sheets, "Please correct the sheet filenames"
         self.sheets = sheets
+        self.filename = filename
         for sheet_name in self.sheets:
             sheet = book.sheet_by_name(sheet_name)
             self.data.setdefault(sheet_name, {})
@@ -127,8 +128,20 @@ class XlsReader(object):
             self._detect_bounds(sheet_name)
             self._fill_tables(sheet_name)
 
+    def get_data(self, sheets=[]):
+        sheets = self._nomalize_sheets(sheets)
+        if not self.data:
+            self.read(sheets=sheets)
+        tables = {}
+        for sheet_name, sheet_data in self.data.items():
+            if not sheets or sheet_name in sheets:
+                tables[sheet_name] = self.data[sheet_name]['content']
+        return tables
+
     def get_tables(self, sheets=[]):
         sheets = self._nomalize_sheets(sheets)
+        if not self.data:
+            self.read(sheets=sheets)
         tables = {}
         for sheet_name, sheet_data in self.data.items():
             if not sheets or sheet_name in sheets:

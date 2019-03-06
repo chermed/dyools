@@ -32,6 +32,32 @@ class Tool(object):
                 output['data'] = result.getvalue()
 
     @classmethod
+    @contextmanager
+    def protecting_attributes(cls, obj, attrs=[], **kwargs):
+        backup_data = {k: getattr(obj, k) for k in attrs}
+        [setattr(obj, k, v) for k, v in kwargs.items()]
+        try:
+            yield
+        except:
+            raise
+        finally:
+            [setattr(obj, k, v) for k, v in backup_data.items()]
+
+    @classmethod
+    @contextmanager
+    def protecting_items(cls, obj, items=[], **kwargs):
+        backup_data = {k: obj[k] for k in items}
+        for k, v in kwargs.items():
+            obj[k] = v
+        try:
+            yield
+        except:
+            raise
+        finally:
+            for k, v in backup_data.items():
+                obj[k] = backup_data[k]
+
+    @classmethod
     def contruct_domain_from_str(cls, domain):
         AND, OR = ' and ', ' or '
         assert '(' not in domain, "can not process parenthese in string domain"

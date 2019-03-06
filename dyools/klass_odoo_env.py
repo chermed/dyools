@@ -10,7 +10,6 @@ from dateutil.parser import parse as dtparse
 from past.builtins import basestring
 
 from .klass_eval import Eval
-from .klass_file import File
 from .klass_if import IF
 from .klass_odoo_mixin import Mixin
 from .klass_path import Path
@@ -278,7 +277,7 @@ class Env(Mixin):
         else:
             paths = path
             for path in paths:
-                assert os.path.exists(path), "The path [%s] sould exists" % path
+                assert os.path.exists(path), "The path [%s] should exists" % path
         for path in paths:
             if os.path.isdir(path):
                 for dirpath, _, filenames in os.walk(path):
@@ -352,7 +351,7 @@ class Env(Mixin):
         if self.list_db_disabled:
             self.list_db = False
         print('End: %s' % path)
-        size = File.get_size_str(path)
+        size = Path.get_size_str(path)
         print('Backup Size: %s' % size)
         return path
 
@@ -365,13 +364,13 @@ class Env(Mixin):
         return self.dbname
 
     def restore_db(self, path, drop=False):
-        assert os.path.isfile(path), 'The path [%s] sould be a file' % path
+        assert os.path.isfile(path), 'The path [%s] should be a file' % path
         if drop:
             try:
                 self.drop_db()
             except:
                 print('can not drop the database')
-        size = File.get_size_str(path)
+        size = Path.get_size_str(path)
         print('Restore Size: %s' % size)
         self.odoo.service.db.restore_db(self.dbname, path)
         print('End: %s dbname=%s' % (path, self.dbname))

@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -10,12 +11,14 @@ import time
 import traceback
 from pprint import pprint
 
+import click
 import requests
 from flask import Flask, request, Response
 from past.builtins import basestring
 
 from .klass_tool import Tool
 
+logger = logging.getLogger(__name__)
 CONSOLE, CMDLINE = 'console', 'cmdline'
 BUILTINS = '__builtins__'
 
@@ -77,11 +80,11 @@ class WS(object):
     def _process_console_data(self, data):
         res = {}
         res.setdefault('data', '')
-
+        ctx = self.ctx.copy()
         with Tool.stdout_in_memory(res):
             script = '\n'.join(data)
-            exec(script, self.ctx)
-        for k, v in self.ctx.items():
+            exec(script, ctx)
+        for k, v in ctx.items():
             try:
                 json.dumps(k)
                 json.dumps(v)
@@ -151,3 +154,25 @@ class WS(object):
         time.sleep(1)
         url = "http://127.0.0.1:%s/shutdown" % self.port
         requests.post(url)
+
+
+@click.command()
+@click.option('--logfile', '-l',
+              type=click.Path(file_okay=True, dir_okay=False, writable=True, readable=True, resolve_path=True,
+                              allow_dash=True), required=False, )
+@click.option('--host', '-h', type=click.STRING, default='0.0.0.0')
+@click.option('--port', '-p', type=click.INT, default=5000)
+@click.option('--token', '-t', type=click.STRING, default=None)
+@click.option('--name', '-n', type=click.STRING, default=None)
+@click.pass_context
+def ws_start_agent(ctx, logfile, host, port, token, name):
+    """Command line for WS agent"""
+    ws_kwargs = {}
+    if host: ws_kwargs['host'] = host
+    if port: ws_kwargs['port'] = port
+    if token: ws_kwargs['token'] = token
+    if name: ws_kwargs['name'] = name
+    ws = WS(**ws_kwargs)
+    if logfile:
+        logging.basicConfig(filename=logfile, level=logging.DEBUG)
+    ws.start()

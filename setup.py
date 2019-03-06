@@ -33,12 +33,13 @@ setup(
         'click',
         'xlsxwriter',
         'xlrd',
+        'requests',
     ],
     setup_requires=['pytest-runner', ],
     tests_require=['pytest', ],
     entry_points='''
         [console_scripts]
-        dyools_agent=dyools:start_agent
+        dyools_agent=dyools:ws_start_agent
     ''',
 
 )

@@ -1,5 +1,6 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import itertools
 from operator import itemgetter
 
 from past.builtins import basestring
@@ -12,8 +13,8 @@ class Table(object):
         self.row_idx = []
         self.nrows = len(data)
         self.ncols = len(data[0]) if data else 0
-        self.index_rows = [x for x in range(self.nrows)]
-        self.index_cols = [x for x in range(self.ncols)]
+        self.index_rows = [[x for x in range(self.nrows)]]
+        self.index_cols = [[x for x in range(self.ncols)]]
 
     def set_col_idx(self, idx):
         assert idx and isinstance(idx, list), "The indexes should be a non empty list"
@@ -48,9 +49,9 @@ class Table(object):
         self.index_cols = cols
 
     def get_value_by_idx(self, row_idx, col_idx):
-        assert isinstance(row_idx, int) and isinstance(col_idx, int), "the index should ba an integer"
-        assert row_idx < self.nrows, "the index should is out of range"
-        assert col_idx < self.ncols, "the index should is out of range"
+        assert isinstance(row_idx, int) and isinstance(col_idx, int), "the index should be an integer"
+        assert row_idx < self.nrows, "the index is out of range"
+        assert col_idx < self.ncols, "the index is out of range"
         return self.data[row_idx][col_idx]
 
     def get_value_by_row_col(self, row_idx=[], col_idx=[]):
@@ -83,6 +84,21 @@ class Table(object):
                 if i == col_indices and j == row_indices:
                     return self.data[i][j]
         return None
+
+    def get_flat(self, empty=True):
+        tables = []
+        for row_tuple in itertools.product(*self.index_rows):
+            for col_tuple in itertools.product(*self.index_cols):
+                value = self[row_tuple:col_tuple]
+                if not empty:
+                    if isinstance(value, basestring):
+                        if not value.strip():
+                            continue
+                    if not value:
+                        continue
+                line = list(row_tuple) + list(col_tuple) + [value]
+                tables.append(line)
+        return tables
 
     def __getitem__(self, item):
         if isinstance(item, slice):
