@@ -16,6 +16,19 @@ class Table(object):
         self.index_rows = [[x for x in range(self.nrows)]]
         self.index_cols = [[x for x in range(self.ncols)]]
 
+    def remove_rows(self, idx):
+        assert idx and isinstance(idx, list), "The indexes should be a non empty list"
+        for line_idx in idx:
+            del self.data[line_idx]
+        self._reindex()
+
+    def remove_cols(self, idx):
+        assert idx and isinstance(idx, list), "The indexes should be a non empty list"
+        for col_idx in idx:
+            for line in self.data:
+                del line[col_idx]
+        self._reindex()
+
     def set_col_idx(self, idx):
         assert idx and isinstance(idx, list), "The indexes should be a non empty list"
         self.col_idx = idx
@@ -47,6 +60,8 @@ class Table(object):
             cols.append([x for x in range(self.ncols)])
         self.index_rows = rows
         self.index_cols = cols
+        self.nrows = len(self.data)
+        self.ncols = len(self.data[0]) if self.data else 0
 
     def get_value_by_idx(self, row_idx, col_idx):
         assert isinstance(row_idx, int) and isinstance(col_idx, int), "the index should be an integer"
