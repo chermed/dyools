@@ -2,8 +2,8 @@ from .klass_consumer import Consumer
 from .klass_date import Date
 from .klass_df import DF
 from .klass_eval import Eval
-from .klass_if import IF
 from .klass_inspect import Inspect
+from .klass_is import IS
 from .klass_logger import Logger
 from .klass_odoo_env import Env
 from .klass_odoo_mixin import Mixin

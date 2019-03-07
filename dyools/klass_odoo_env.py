@@ -10,7 +10,7 @@ from dateutil.parser import parse as dtparse
 from past.builtins import basestring
 
 from .klass_eval import Eval
-from .klass_if import IF
+from .klass_is import IS
 from .klass_odoo_mixin import Mixin
 from .klass_path import Path
 
@@ -137,12 +137,12 @@ class Env(Mixin):
                 ids = self.env[relation].search([], limit=1, order="id asc").ids
             elif value == '__last__':
                 ids = self.env[relation].search([], limit=1, order="id desc").ids
-            elif isinstance(value, list) and IF.is_domain(value):
+            elif isinstance(value, list) and IS.domain(value):
                 ids = self.env[relation].search(value).ids
             elif isinstance(value, int):
                 ids = [value]
             elif isinstance(value, basestring):
-                if IF.is_xmlid(value):
+                if IS.xmlid(value):
                     ids = self.env.ref(value).ids
                 else:
                     ids = self.env[relation].search([('name', '=', value)]).ids
@@ -185,7 +185,7 @@ class Env(Mixin):
         if refs:
             if isinstance(refs, int):
                 records = records.browse(refs)
-            elif IF.is_xmlid(refs):
+            elif IS.xmlid(refs):
                 records = records.env.ref(refs, raise_if_not_found=False) or records
             elif isinstance(refs, basestring):
                 records = records.search([('name', '=', refs)])
@@ -208,7 +208,7 @@ class Env(Mixin):
                 records.write(record_data)
             else:
                 records = records.create(record_data)
-                if isinstance(refs, basestring) and IF.is_xmlid(refs):
+                if isinstance(refs, basestring) and IS.xmlid(refs):
                     self.update_xmlid(records, xmlid=refs)
         if record_export:
             context[record_export] = records

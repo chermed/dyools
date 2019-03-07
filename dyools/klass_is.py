@@ -5,10 +5,10 @@ import re
 from past.builtins import basestring
 
 
-class IF(object):
+class IS(object):
     @classmethod
-    def is_xmlid(cls, text):
-        if not cls.is_str(text) or cls.is_empty(text):
+    def xmlid(cls, text):
+        if not cls.str(text) or cls.empty(text):
             return False
         else:
             text = text.strip()
@@ -18,7 +18,7 @@ class IF(object):
                 return False
 
     @classmethod
-    def is_domain(cls, text):
+    def domain(cls, text):
         if not isinstance(text, list):
             return False
         ttuple, op = 0, 0
@@ -38,15 +38,15 @@ class IF(object):
         return True
 
     @classmethod
-    def is_str(cls, text):
+    def str(cls, text):
         if isinstance(text, basestring):
             return True
         else:
             return False
 
     @classmethod
-    def is_empty(cls, text):
-        if cls.is_str(text):
+    def empty(cls, text):
+        if cls.str(text):
             text = text.strip()
         if text:
             return False
@@ -54,8 +54,8 @@ class IF(object):
             return True
 
     @classmethod
-    def is_iterable(cls, text):
-        if cls.is_str(text):
+    def iterable(cls, text):
+        if cls.str(text):
             return False
         if hasattr(text, '__iter__'):
             return True
