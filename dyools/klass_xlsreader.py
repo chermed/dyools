@@ -26,6 +26,7 @@ class XlsReader(object):
         if not isinstance(self.sheets, list):
             self.sheets = [self.sheets]
         self.data = {}
+        self.options = kwargs.get('options', dict(formatting_info=True))
 
     def _nomalize_sheets(self, sheets):
         if sheets:
@@ -105,7 +106,7 @@ class XlsReader(object):
         filename = filename or self.filename
         sheets = sheets or self.sheets
         sheets = self._nomalize_sheets(sheets)
-        book = xlrd.open_workbook(self.filename, formatting_info=True)
+        book = xlrd.open_workbook(self.filename, **self.options)
         sheets = sheets or [x.name for x in book.sheets()]
         sheets = [x.name for x in book.sheets() if x.name in sheets]
         assert filename, "Please provide a filename"

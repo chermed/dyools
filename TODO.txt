@@ -1,3 +1,0 @@
-Retester su rpython 2.7
-start_agent from cli ?
-add tests for klass_tool

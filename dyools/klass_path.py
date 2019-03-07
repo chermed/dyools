@@ -29,6 +29,16 @@ class Path(object):
             shutil.rmtree(tmpdir)
 
     @classmethod
+    @contextmanager
+    def tempfile(cls, **kwargs):
+        f = tempfile.NamedTemporaryFile(delete=True, **kwargs)
+        try:
+            yield f
+        finally:
+            if os.path.isfile(f.name):
+                os.remove(f.name)
+
+    @classmethod
     def subpaths(self, path, isfile=False):
         elements = []
         sep = os.path.sep if path.startswith(os.path.sep) else ''
