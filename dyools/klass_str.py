@@ -1,5 +1,6 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import itertools
 import unicodedata
 
 
@@ -18,6 +19,12 @@ class Str(object):
 
     def remove_spaces(self):
         return self.arg.replace(' ', '')
+
+    def case_combinations(self):
+        str1 = [x.lower() for x in self.arg]
+        str2 = [x.upper() for x in self.arg]
+        combination = list(set((list(itertools.product(*zip(str1, str2))))))
+        return [''.join(x) for x in combination]
 
     def remove_accents(self):
         txt = self.arg

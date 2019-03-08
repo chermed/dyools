@@ -33,7 +33,7 @@ class Tool(object):
 
     @classmethod
     @contextmanager
-    def protecting_attributes(cls, obj, attrs=[], **kwargs):
+    def protecting_attributes(cls, obj, attrs, **kwargs):
         backup_data = {k: getattr(obj, k) for k in attrs}
         [setattr(obj, k, v) for k, v in kwargs.items()]
         try:
@@ -45,7 +45,7 @@ class Tool(object):
 
     @classmethod
     @contextmanager
-    def protecting_items(cls, obj, items=[], **kwargs):
+    def protecting_items(cls, obj, items, **kwargs):
         backup_data = {k: obj[k] for k in items}
         for k, v in kwargs.items():
             obj[k] = v
@@ -88,6 +88,10 @@ class Tool(object):
                     value = int(value)
                 elif isfloat and float_parts[0].isdigit() and float_parts[1].isdigit():
                     value = float(value)
+                try:
+                    value = eval(value)
+                except Exception as e:
+                    pass
                 domain[i] = (key, op, value)
                 i += 1
             if len(domain) > 1:

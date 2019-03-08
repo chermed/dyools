@@ -5,8 +5,8 @@ from io import BytesIO
 import xlsxwriter
 from past.builtins import basestring
 
-from dyools import Date
-from dyools import Serie
+from .klass_date import Date
+from .klass_serie import Serie
 
 
 class XlsWriter(object):

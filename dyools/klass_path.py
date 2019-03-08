@@ -1,9 +1,13 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import fnmatch
 import os
+import re
 import shutil
 import tempfile
 from contextlib import contextmanager
+
+from .klass_str import Str
 
 
 class Path(object):
@@ -107,3 +111,39 @@ class Path(object):
             return round(total_size / (1024. * 1024.), 2), 'MB'
         else:
             return round(total_size, 2), 'B'
+
+    @classmethod
+    def find_files(cls, expr, path=False):
+        if os.path.isfile(path):
+            if fnmatch.filter([path], expr):
+                return [path]
+            else:
+                return []
+        path = path or os.getcwd()
+        with cls.chdir(path):
+            matches = set()
+            for root, dirnames, filenames in os.walk(path):
+                for e in Str(expr).case_combinations():
+                    for filename in fnmatch.filter(filenames, e):
+                        matches.add(os.path.join(root, filename))
+            return list(matches)
+
+    @classmethod
+    def grep(cls, expressions, files, comment=False):
+        if not isinstance(expressions, list):
+            expressions = [expressions]
+        matches = {}
+        for file in files:
+            with open(file) as f:
+                for i, line in enumerate(f.readlines(), start=1):
+                    for expr in expressions:
+                        pattern = re.compile(expr)
+                        if expr in line or pattern.search(line):
+                            if comment:
+                                pattern = re.compile(comment)
+                                if pattern.search(line.strip()):
+                                    continue
+                            matches.setdefault(file, {})
+                            matches[file].setdefault(expr, [])
+                            matches[file][expr].append(i)
+        return matches

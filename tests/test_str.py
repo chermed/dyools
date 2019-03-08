@@ -10,3 +10,8 @@ class TestStr(TestCase):
         self.assertEqual(Str([1, 5, 8]).to_str().replace(' ', ''), '[1,5,8]')
         self.assertEqual(Str(' de texté ').remove_spaces(), 'detexté')
         self.assertEqual(Str(' de texté ').remove_accents(), ' de texte ')
+
+    def test_str_combinations(self):
+        from dyools import Str
+        self.assertEqual(sorted(Str('*.py').case_combinations()), sorted(['*.py', '*.Py', '*.pY', '*.PY']))
+
