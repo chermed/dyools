@@ -8,7 +8,7 @@ from prettytable import PrettyTable
 
 from .klass_tool import Tool
 
-CONSOLE, CMDLINE = 'console', 'cmdline'
+CONSOLE, CMDLINE, TOP = 'console', 'cmdline', 'top'
 
 
 class Consumer(object):
@@ -19,9 +19,10 @@ class Consumer(object):
         self.data = []
 
     def _send(self, mode):
-        assert mode in ['console', 'cmdline'], 'The mode [%s] is not implemented' % mode
+        assert mode in ['console', 'cmdline', 'top'], 'The mode [%s] is not implemented' % mode
         headers = {'WS_TOKEN': self.token}
-        res = requests.post('http://%s:%s' % (self.host, self.port), json={mode: self.data}, headers=headers)
+        data = self.data
+        res = requests.post('http://%s:%s' % (self.host, self.port), json={mode: data}, headers=headers)
         self.result = res.json()
         return self.result
 
@@ -58,6 +59,16 @@ class Consumer(object):
                 return self._send(CONSOLE)
         else:
             return self._send(CONSOLE)
+
+    def top(self, path=[]):
+        if path:
+            if not isinstance(path, (list, tuple)):
+                path = [path]
+            with Tool.protecting_attributes(self, ['data'], data=[]):
+                self.add({'path': path})
+                return self._send(TOP)
+        else:
+            return self._send(TOP)
 
     def print(self):
         data = self.result['data']

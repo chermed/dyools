@@ -22,6 +22,7 @@ setup(
     py_modules=['dyools'],
     include_package_data=True,
     package_dir={},
+    packages=['dyools'],
     install_requires=[
         'click',
         'future',
@@ -34,12 +35,13 @@ setup(
         'xlsxwriter',
         'xlrd',
         'requests',
+        'psutil',
     ],
     setup_requires=['pytest-runner', ],
     tests_require=['pytest', ],
     entry_points='''
         [console_scripts]
-        dyools_agent=dyools:ws_start_agent
+        dyools_launch_ws=dyools:ws_start_agent
     ''',
 
 )

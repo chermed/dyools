@@ -12,6 +12,7 @@ import traceback
 from pprint import pprint
 
 import click
+import psutil as psutil
 import requests
 from flask import Flask, request, Response
 from past.builtins import basestring
@@ -19,12 +20,12 @@ from past.builtins import basestring
 from .klass_tool import Tool
 
 logger = logging.getLogger(__name__)
-CONSOLE, CMDLINE = 'console', 'cmdline'
+CONSOLE, CMDLINE, TOP = 'console', 'cmdline', 'top'
 BUILTINS = '__builtins__'
 
 
 class WS(object):
-    def __init__(self, port=5000, env=None, host='0.0.0.0', token=None, name=None, ctx={}):
+    def __init__(self, port=5000, env=None, host='0.0.0.0', token=None, name=None, ctx={}, **kwargs):
         self.app = Flask(name or 'Remote WS')
         self.app.add_url_rule('/', 'index', self.action, methods=['POST', 'GET'])
         self.app.add_url_rule('/shutdown', 'shutdown', self.shutdown, methods=['POST', 'GET'])
@@ -34,6 +35,7 @@ class WS(object):
         self.host = host
         self.token = token
         self.env = env
+        self.debug = kwargs.get('debug', False)
         self.ctx = {}
         self.ctx = {
             'env': self.env,
@@ -54,7 +56,6 @@ class WS(object):
                     'data': 'Access denied',
                 }
                 return self.response(data, code)
-
         return False
 
     def response(self, data, code=200):
@@ -64,6 +65,45 @@ class WS(object):
             status=code,
             mimetype='application/json'
         )
+
+    def _process_top_data(self, data):
+        virtual_memory = psutil.virtual_memory()
+        partitions = psutil.disk_partitions()
+        coef = 1.0
+        res = {'data':
+            {
+                'cpu': {
+                    'percent': psutil.cpu_percent(),
+                    'count_logical': psutil.cpu_count(),
+                    'count': psutil.cpu_count(logical=False),
+                },
+                'memory': {
+                    'percent': virtual_memory.percent,
+                    'total': round(virtual_memory.total / coef, 2),
+                    'available': round(virtual_memory.available / coef, 2),
+                    'used': round(virtual_memory.used / coef, 2),
+                    'free': round(virtual_memory.free / coef, 2),
+                }
+            }
+        }
+        for partition in partitions:
+            disk_usage = psutil.disk_usage(partition.mountpoint)
+            res['data'][partition.mountpoint] = {
+                'total': round(disk_usage.total / coef, 2),
+                'used': round(disk_usage.used / coef, 2),
+                'free': round(disk_usage.free / coef, 2),
+                'percent': disk_usage.percent,
+            }
+        for item in data:
+            for path in item.get('path', []):
+                disk_usage = psutil.disk_usage(path)
+                res['data'][path] = {
+                    'total': round(disk_usage.total / coef, 2),
+                    'used': round(disk_usage.used / coef, 2),
+                    'free': round(disk_usage.free / coef, 2),
+                    'percent': disk_usage.percent,
+                }
+        return res
 
     def _process_cmdline_data(self, data):
         res = {'data': ''}
@@ -99,10 +139,15 @@ class WS(object):
             return res
         data = request.get_json()
         code = 200
+        if self.debug:
+            print('Received data :')
+            pprint(data)
         if CONSOLE in data:
             res_data = self._process_console_data(data[CONSOLE])
         elif CMDLINE in data:
             res_data = self._process_cmdline_data(data[CMDLINE])
+        elif TOP in data:
+            res_data = self._process_top_data(data[TOP])
         else:
             code = 500
             res_data = {'data': 'Not implemented', 'code': code}
@@ -164,10 +209,11 @@ class WS(object):
 @click.option('--port', '-p', type=click.INT, default=5000)
 @click.option('--token', '-t', type=click.STRING, default=None)
 @click.option('--name', '-n', type=click.STRING, default=None)
+@click.option('--debug', is_flag=True, default=False, )
 @click.pass_context
-def ws_start_agent(ctx, logfile, host, port, token, name):
+def ws_start_agent(ctx, logfile, host, port, token, name, debug):
     """Command line for WS agent"""
-    ws_kwargs = {}
+    ws_kwargs = {'debug': debug}
     if host: ws_kwargs['host'] = host
     if port: ws_kwargs['port'] = port
     if token: ws_kwargs['token'] = token
