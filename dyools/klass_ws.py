@@ -17,6 +17,8 @@ import requests
 from flask import Flask, request, Response
 from past.builtins import basestring
 
+from .klass_convert import Convert
+from .klass_str import Str
 from .klass_tool import Tool
 
 logger = logging.getLogger(__name__)
@@ -67,9 +69,12 @@ class WS(object):
         )
 
     def _process_top_data(self, data):
+        def fv(value):
+            value = Convert.data(value, 'b', 'mb')
+            return Str(value, suffix='MB').with_separator()
+
         virtual_memory = psutil.virtual_memory()
         partitions = psutil.disk_partitions()
-        coef = 1.0
         res = {'data':
             {
                 'cpu': {
@@ -79,28 +84,28 @@ class WS(object):
                 },
                 'memory': {
                     'percent': virtual_memory.percent,
-                    'total': round(virtual_memory.total / coef, 2),
-                    'available': round(virtual_memory.available / coef, 2),
-                    'used': round(virtual_memory.used / coef, 2),
-                    'free': round(virtual_memory.free / coef, 2),
+                    'total': fv(virtual_memory.total),
+                    'available': fv(virtual_memory.available),
+                    'used': fv(virtual_memory.used),
+                    'free': fv(virtual_memory.free),
                 }
             }
         }
         for partition in partitions:
             disk_usage = psutil.disk_usage(partition.mountpoint)
             res['data'][partition.mountpoint] = {
-                'total': round(disk_usage.total / coef, 2),
-                'used': round(disk_usage.used / coef, 2),
-                'free': round(disk_usage.free / coef, 2),
+                'total': fv(disk_usage.total),
+                'used': fv(disk_usage.used),
+                'free': fv(disk_usage.free),
                 'percent': disk_usage.percent,
             }
         for item in data:
             for path in item.get('path', []):
                 disk_usage = psutil.disk_usage(path)
                 res['data'][path] = {
-                    'total': round(disk_usage.total / coef, 2),
-                    'used': round(disk_usage.used / coef, 2),
-                    'free': round(disk_usage.free / coef, 2),
+                    'total': fv(disk_usage.total),
+                    'used': fv(disk_usage.used),
+                    'free': fv(disk_usage.free),
                     'percent': disk_usage.percent,
                 }
         return res
