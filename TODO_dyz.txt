@@ -1,0 +1,76 @@
+serach 'from dyools...'
+
+
+Usage: otm [OPTIONS] COMMAND [ARGS]...
+
+  CLI for Odoo
+
+Options:
+  -d, --database TEXT             The database
+  -h, --host TEXT                 The host of the server
+  -l, --load TEXT                 The name of section to load
+  --prompt-login                  Prompt the Odoo parameters for loggin
+  --prompt-connect                Prompt the Odoo parameters for connection
+  -c, --config FILE               The path of config
+  -p, --port INTEGER              The port of the server
+  -u, --user TEXT                 The user of the database
+  -pass, --password TEXT          The password of the user
+  -s, --superuserpassword TEXT    The password of the super user
+  --protocol [jsonrpc+ssl|jsonrpc]
+                                  Protocol to use
+  -m, --mode [test|dev|prod]      Database mode
+  -t, --timeout INTEGER           Timeout in minutes
+  --yes
+  --no-context
+  --debug
+  -w, --workers INTEGER
+  --version                       Show the version
+  --help                          Show this message and exit.
+
+Commands:
+  arch                Cat the arch of the view
+  connect             Connect to the server
+  count               Count the records on a model
+  create              Create a new section
+  crud                List users access to the givenmodel
+  db-backup           Backup the database
+  db-backup-all       Backup all databases
+  db-create           Create a database
+  db-drop             Drop the database
+  db-list             List databases
+  db-restore          Restore a database
+  db-server-backup    Backup all databases on a server
+  debug               Debug tree views of the given models
+  delete              Delete a section
+  fake                Show a fake examples
+  fields              List fields of a model
+  files               Show files and directories
+  func                Execute a function
+  install             Install modules
+  install-all         Install modules
+  list                Show section list
+  load                Process yaml files
+  login               Login to the database
+  pg-login            Login to the postgresql
+  pg-reset-passwords  Reset password of given databases to admin
+  pg-truncate         Truncate some postgresql tables
+  pg-users            Show users of given databases
+  prompt              Edit the data of a model by promting
+  qweb                Qweb inspection
+  random              Generate random strings
+  record-create       Create the data to a model
+  record-update       Update the data of a model
+  records             Show the data of a model
+  refs                Searching the XML-IDS related to the model
+  search-expr         Searching for the expression in the views
+  select              Select a section
+  shell               Shell mode
+  trans-search        Searching for the term in the translation table
+  truncate            Truncate an object
+  uninstall           Uninstall modules
+  update              Update a section
+  update-list         Update list of modules
+  upgrade             Upgrade modules
+  view                Execute fields_view_get on the given model Extract:...
+  which               Show actual informations
+  yaml-template       Show an example

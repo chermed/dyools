@@ -64,13 +64,20 @@ class Path(object):
 
         if not os.path.isfile(path):
             ddir = os.path.dirname(path)
-            Path.create_dir(ddir)
+            cls.create_dir(ddir)
             _erase_data(path, content)
         else:
             with open(path, 'r') as f:
                 c = f.read()
             if c != content:
                 _erase_data(path, content)
+
+    @classmethod
+    def touch(cls, path):
+        cls.create_dir(os.path.dirname(path))
+        if not os.path.isfile(path):
+            with open(path, 'w+') as f:
+                pass
 
     @classmethod
     def create_dir(cls, path):

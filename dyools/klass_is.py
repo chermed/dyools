@@ -61,3 +61,59 @@ class IS(object):
             return True
         else:
             return False
+
+    @classmethod
+    def list_or_tuple(cls, item):
+        return isinstance(item, (list, tuple))
+
+    @classmethod
+    def list_of_list(cls, item):
+        if not isinstance(item, list):
+            return False
+        if not item:
+            return True
+        if not isinstance(item[0], list):
+            return False
+        return True
+
+    @classmethod
+    def list_of_values(cls, item):
+        if not isinstance(item, list):
+            return False
+        if not item:
+            return True
+        if isinstance(item[0], list):
+            return False
+        return True
+
+    @classmethod
+    def list_of_dict(cls, item):
+        if not isinstance(item, list):
+            return False
+        if not item:
+            return True
+        if not isinstance(item[0], dict):
+            return False
+        return True
+
+    @classmethod
+    def dict_of_dict(cls, item):
+        if not isinstance(item, dict):
+            return False
+        for k, v in item.items():
+            if isinstance(v, dict):
+                return True
+            else:
+                return False
+        return True
+
+    @classmethod
+    def dict_of_values(cls, item):
+        if not isinstance(item, dict):
+            return False
+        for k, v in item.items():
+            if isinstance(v, dict):
+                return False
+            else:
+                return True
+        return True

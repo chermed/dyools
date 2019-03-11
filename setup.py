@@ -42,6 +42,7 @@ setup(
     entry_points='''
         [console_scripts]
         dyools_launch_ws=dyools:ws_start_agent
+        zz=dyools:cli
     ''',
 
 )

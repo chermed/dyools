@@ -49,7 +49,6 @@ class TestIS(TestCase):
         self.assertFalse(IS.domain(['&']))
         self.assertFalse(IS.domain(['x', '=', 5]))
 
-
     def test_is_iterable(self):
         from dyools import IS
         self.assertTrue(IS.iterable([]))
@@ -61,3 +60,67 @@ class TestIS(TestCase):
         self.assertFalse(IS.iterable(''))
         self.assertFalse(IS.iterable('abcdefgh'))
         self.assertFalse(IS.iterable(1234))
+
+    def test_is_list_of_values(self):
+        from dyools import IS
+        self.assertTrue(IS.list_of_values([]))
+        self.assertTrue(IS.list_of_values([1, 2, 3, 4]))
+        self.assertFalse(IS.list_of_values([[6]]))
+        self.assertFalse(IS.list_of_values(False))
+        self.assertFalse(IS.list_of_values({}))
+        self.assertTrue(IS.list_of_values([True, False]))
+        self.assertFalse(IS.list_of_values(''))
+        self.assertFalse(IS.list_of_values('abcdefgh'))
+        self.assertFalse(IS.list_of_values(1234))
+
+    def test_is_list_of_list(self):
+        from dyools import IS
+        self.assertTrue(IS.list_of_list([]))
+        self.assertFalse(IS.list_of_list([1, 2, 3, 4]))
+        self.assertTrue(IS.list_of_list([[6]]))
+        self.assertFalse(IS.list_of_list(False))
+        self.assertFalse(IS.list_of_list({}))
+        self.assertTrue(IS.list_of_list([]))
+        self.assertFalse(IS.list_of_list(''))
+        self.assertFalse(IS.list_of_list('abcdefgh'))
+        self.assertFalse(IS.list_of_list(1234))
+
+    def test_is_list_or_tuple(self):
+        from dyools import IS
+        self.assertTrue(IS.list_or_tuple([]))
+        self.assertTrue(IS.list_or_tuple([1, 2, 3, 4]))
+        self.assertTrue(IS.list_or_tuple(()))
+        self.assertTrue(IS.list_or_tuple((1, 2, 3, 4,)))
+        self.assertFalse(IS.list_or_tuple({}))
+        self.assertFalse(IS.list_or_tuple({'a': 1}))
+        self.assertFalse(IS.list_or_tuple(''))
+        self.assertFalse(IS.list_or_tuple('abcdefgh'))
+        self.assertFalse(IS.list_or_tuple(1234))
+
+    def test_is_dict_of_dict(self):
+        from dyools import IS
+        self.assertTrue(IS.dict_of_dict({}))
+        self.assertTrue(IS.dict_of_dict({'a': {}}))
+        self.assertTrue(IS.dict_of_dict({'b': {'z': 30}, 'c': {}}))
+        self.assertFalse(IS.dict_of_dict({'k': [6, 8]}))
+        self.assertFalse(IS.dict_of_dict([]))
+        self.assertFalse(IS.dict_of_dict({'a': 1}))
+        self.assertFalse(IS.dict_of_dict({'b': False}))
+        self.assertFalse(IS.dict_of_dict(''))
+        self.assertFalse(IS.dict_of_dict('abcdefgh'))
+        self.assertFalse(IS.dict_of_dict(1234))
+
+    def test_is_dict_of_values(self):
+        from dyools import IS
+        self.assertTrue(IS.dict_of_values({}))
+        self.assertTrue(IS.dict_of_values({'a': 1}))
+        self.assertTrue(IS.dict_of_values({'b': []}))
+        self.assertTrue(IS.dict_of_values({'b': [1, 2, 4]}))
+        self.assertTrue(IS.dict_of_values({'b': False}))
+        self.assertTrue(IS.dict_of_values({'b': 0}))
+        self.assertFalse(IS.dict_of_values({'k': {}}))
+        self.assertFalse(IS.dict_of_values([]))
+        self.assertFalse(IS.dict_of_values({'a': {'b': 40}}))
+        self.assertFalse(IS.dict_of_values(''))
+        self.assertFalse(IS.dict_of_values('abcdefgh'))
+        self.assertFalse(IS.dict_of_values(1234))
