@@ -35,21 +35,21 @@ class Print(object):
             Logger.title('Total: {} item(s)'.format(total), exit=exit)
 
     @classmethod
-    def info(cls, data, header=False, footer=False, total=False, exit=False):
+    def info(cls, data, header=False, footer=False, total=None, exit=False):
         cls.__show(data, header, footer, total, STATE.INFO, exit=exit)
 
     @classmethod
-    def success(cls, data, header=False, footer=False, total=False, exit=False):
+    def success(cls, data, header=False, footer=False, total=None, exit=False):
         cls.__show(data, header, footer, total, STATE.SUCCESS, exit=exit)
 
     @classmethod
-    def error(cls, data, header=False, footer=False, total=False, exit=True):
+    def error(cls, data, header=False, footer=False, total=None, exit=True):
         cls.__show(data, header, footer, total, STATE.ERROR, exit=exit)
 
     @classmethod
-    def warning(cls, data, header=False, footer=False, total=False, exit=False):
+    def warning(cls, data, header=False, footer=False, total=None, exit=False):
         cls.__show(data, header, footer, total, STATE.WARNING, exit=exit)
 
     @classmethod
-    def debug(cls, data, header=False, footer=False, total=False, exit=False):
+    def debug(cls, data, header=False, footer=False, total=None, exit=False):
         cls.__show(data, header, footer, total, STATE.DEBUG, exit=exit)

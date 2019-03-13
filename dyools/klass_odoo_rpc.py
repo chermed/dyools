@@ -31,7 +31,7 @@ class RPC(Mixin):
                 kwargs['port'] = int(url_loc[1]) if len(url_loc) == 2 else (443 if url_ssl else 80)
         host = kwargs.get('host', os.environ.get('RPC_HOST'))
         port = kwargs.get('port', os.environ.get('RPC_PORT'))
-        dbname = kwargs.get('dbname', os.environ.get('RPC_DBNAME'))
+        dbname = kwargs.get('dbname', kwargs.get('database', os.environ.get('RPC_DBNAME')))
         user = kwargs.get('user', os.environ.get('RPC_USER'))
         password = kwargs.get('password', os.environ.get('RPC_PASSWORD'))
         superadminpassword = kwargs.get('superadminpassword', os.environ.get('RPC_SUPERADMINPASSWORD'))
@@ -47,6 +47,7 @@ class RPC(Mixin):
         port = int(port)
         self.dbname = dbname
         odoo = odoorpc.ODOO(host=host, protocol=protocol, port=port, timeout=timeout)
+        self.version = odoo.version
         self.env = False
         self.odoo = odoo
         self.superadminpassword = superadminpassword
