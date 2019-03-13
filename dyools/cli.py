@@ -5,6 +5,8 @@ from os.path import expanduser
 
 import click
 
+from .klass_data import Data
+from .klass_print import Print
 from .klass_yaml_config import YamlConfig
 
 home = expanduser("~")
@@ -23,6 +25,22 @@ DEFAULT_CONFIG = {
     'mode': 'dev',
     'default': False,
 }
+
+
+class ConfigEnum(object):
+    HOST = 'host'
+    PORT = 'port'
+    DATABASE = 'database'
+    USER = 'user'
+    PASSWORD = 'password'
+    SUPERADMINPASSWORD = 'superadminpassword'
+    PROTOCOL = 'protocol'
+    MODE = 'mode'
+    PRODUCTION = 'production'
+    TEST = 'test'
+    DEVELOPPEMENT = 'developpement'
+    MODES = [PRODUCTION, TEST, DEVELOPPEMENT]
+    PROTOCOLS = ['jsonrpc', 'jsonrpc+ssl']
 
 
 @click.group()
@@ -44,8 +62,8 @@ DEFAULT_CONFIG = {
 @click.option('--user', '-u', type=click.STRING, default=None, help="User")
 @click.option('--password', '-pass', type=click.STRING, default=None, help="Password")
 @click.option('--superadminpassword', '-s', type=click.STRING, default=None, help="Super admin password")
-@click.option('--protocol', type=click.Choice(['jsonrpc+ssl', 'jsonrpc']), default=None, help="Protocol")
-@click.option('--mode', '-m', type=click.Choice(['test', 'dev', 'prod']), default=None, help="Mode")
+@click.option('--protocol', type=click.Choice(ConfigEnum.PROTOCOLS), default=None, help="Protocol")
+@click.option('--mode', '-m', type=click.Choice(ConfigEnum.MODES), default=None, help="Mode")
 @click.option('--timeout', '-t', type=click.INT, default=60, help="Timeout in minutes")
 @click.option('--yes', is_flag=True, default=False)
 @click.option('--no-context', is_flag=True, default=False)
@@ -54,13 +72,35 @@ DEFAULT_CONFIG = {
 @click.pass_context
 def cli(ctx, database, host, port, user, password, superadminpassword, protocol, timeout, config, load, mode,
         prompt_login, prompt_connect, yes, no_context, debug, workers):
-    print(database, host, port, user, password, superadminpassword, protocol, timeout, config, load, mode,
-          prompt_login, prompt_connect, yes, no_context, debug, workers)
     yaml_obj = YamlConfig(config)
-    default_config = yaml_obj.get(default=True) or DEFAULT_CONFIG
+    current_config = yaml_obj.get(default=True) or DEFAULT_CONFIG
+    configs = yaml_obj.get_data() or DEFAULT_CONFIG
     ctx.obj = {}
-    ctx.obj['yaml_obj'] = yaml_obj
-    ctx.obj['default_config'] = default_config
+    ctx.obj['config_obj'] = yaml_obj
+    ctx.obj['configs'] = configs
+    ctx.obj['current_config'] = current_config
+    if load:
+        if load not in configs:
+            Print.error('The configuration [{}] not found!'.format(load))
+        current_config = yaml_obj.get(name=load)
+    else:
+        current_config = yaml_obj.get(default=True) or DEFAULT_CONFIG
+    if host is not None:
+        current_config[ConfigEnum.HOST] = host
+    if port is not None:
+        current_config[ConfigEnum.PORT] = port
+    if database is not None:
+        current_config[ConfigEnum.DATABASE] = database
+    if user is not None:
+        current_config[ConfigEnum.USER] = user
+    if password is not None:
+        current_config[ConfigEnum.PASSWORD] = password
+    if superadminpassword is not None:
+        current_config[ConfigEnum.SUPERADMINPASSWORD] = superadminpassword
+    if protocol is not None:
+        current_config[ConfigEnum.PROTOCOL] = protocol
+    if current_config.get(ConfigEnum.MODE, ConfigEnum.PRODUCTION) == ConfigEnum.PRODUCTION:
+        click.confirm('Production environnement, do you want to continue?', abort=True)
 
 
 @cli.command('create')
@@ -69,21 +109,37 @@ def cli(ctx, database, host, port, user, password, superadminpassword, protocol,
 def __create_config(ctx, name):
     """Create a new configuration"""
     configs = ctx.obj['configs']
-    host = click.prompt('host', default=DEFAULT_CONFIG['host'], type=str)
-    port = click.prompt('port', default=DEFAULT_CONFIG['port'], type=str)
-    database = click.prompt('database', default=DEFAULT_CONFIG['database'], type=str)
-    user = click.prompt('user', default=DEFAULT_CONFIG['user'], type=str)
-    password = click.prompt('password', default=DEFAULT_CONFIG['password'], type=str)
-    superadminpassword = click.prompt('superadminpassword', default=DEFAULT_CONFIG['superadminpassword'], type=str)
-    protocol = click.prompt('protocol', default=DEFAULT_CONFIG['protocol'], type=str)
-    mode = click.prompt('mode', default=DEFAULT_CONFIG['mode'], type=str)
-    print('CREATE', name)
-    print('CREATE', host, port, database)
+    if name in configs:
+        Print.error('The name [{}] is already exists !'.format(name))
+    host = click.prompt(ConfigEnum.HOST, default=DEFAULT_CONFIG[ConfigEnum.HOST], type=str)
+    port = click.prompt(ConfigEnum.PORT, default=DEFAULT_CONFIG[ConfigEnum.PORT], type=int)
+    database = click.prompt(ConfigEnum.DATABASE, default=DEFAULT_CONFIG[ConfigEnum.DATABASE], type=str)
+    user = click.prompt(ConfigEnum.USER, default=DEFAULT_CONFIG[ConfigEnum.USER], type=str)
+    password = click.prompt(ConfigEnum.PASSWORD, default=DEFAULT_CONFIG[ConfigEnum.PASSWORD], type=str)
+    superadminpassword = click.prompt(ConfigEnum.SUPERADMINPASSWORD,
+                                      default=DEFAULT_CONFIG[ConfigEnum.SUPERADMINPASSWORD], type=str)
+    protocol = click.prompt(ConfigEnum.PROTOCOL, default=DEFAULT_CONFIG[ConfigEnum.PROTOCOL], type=str)
+    mode = click.prompt(ConfigEnum.MODE, default=DEFAULT_CONFIG[ConfigEnum.MODE], type=str)
+    data = DEFAULT_CONFIG.copy()
+    data.update(dict(
+        host=host,
+        port=port,
+        database=database,
+        user=user,
+        password=password,
+        superadminpassword=superadminpassword,
+        protocol=protocol,
+        mode=mode))
+    ctx.obj['config_obj'].add(name, **data)
+    ctx.obj['config_obj'].dump()
 
 
 @cli.command('list')
 @click.pass_context
 def __list(ctx):
-    """Command line for dyools"""
-    print('CREATE')
-    print('LIST ====')
+    """List of configurations"""
+    configs = ctx.obj['configs']
+    data = Data(configs)
+    len_tbl = len(configs)
+    tbl = data.get_pretty_table()
+    Print.info(tbl, header="List of configurations", total=len_tbl)

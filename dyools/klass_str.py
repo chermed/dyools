@@ -21,11 +21,21 @@ class Str(object):
         txt = ''.join(txt)
         return self.to_str(txt)
 
+    def to_title(self):
+        txt = self.arg.strip()
+        txt = txt.strip('_')
+        txt = txt.strip('-')
+        txt = Str(txt).replace({' ': ['-', '*', '.', '_']})
+        txt = txt.split()
+        txt = [x.title() for x in txt]
+        txt = ' '.join(txt)
+        return self.to_str(txt)
+
     def remove_spaces(self):
         res = self.arg.replace(' ', '')
         return self.to_str(res)
 
-    def replace(self, **kwargs):
+    def replace(self, kwargs):
         arg = self.arg
         for key, values in kwargs.items():
             if not isinstance(values, (list, tuple)):

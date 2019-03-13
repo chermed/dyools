@@ -13,6 +13,7 @@ class TestData(TestCase):
         self.assertEqual(Data([[], []], has_header=False).to_list(), [[[], []]])
         self.assertEqual(Data([[], []], has_header=True).get_lines(), [[]])
         self.assertEqual(Data([[], []], has_header=True).get_header(), [])
+        self.assertEqual(Data(False, header=[1, 3]).get_header(), [1, 3])
 
     def test_data_dict_of_dict(self):
         out_header = ['name', 'arg1', 'arg2', 'arg3']
@@ -58,10 +59,10 @@ class TestData(TestCase):
         }]
 
         from dyools import Data
-        self.assertEqual(Data(dict_of_dict).get_header(), out_header)
+        self.assertEqual(Data(dict_of_dict, name='name').get_header(), out_header)
         self.assertEqual(Data(dict_of_dict).get_lines(), out_lines)
-        self.assertEqual(Data(dict_of_dict).to_list(), out_list)
-        self.assertEqual(Data(dict_of_dict).to_dictlist(), dict_list)
+        self.assertEqual(Data(dict_of_dict, name='name').to_list(), out_list)
+        self.assertEqual(Data(dict_of_dict, name='name').to_dictlist(), dict_list)
 
     def test_data_list_of_values(self):
         in_header = ['Code', 'Name']
@@ -78,7 +79,7 @@ class TestData(TestCase):
         self.assertEqual(in_header, Data(out_dictlist).get_header())
         self.assertEqual(in_header, Data(out_dictlist).get_header())
         self.assertEqual([in_values], Data(out_dictlist).get_lines())
-        self.assertEqual(in_values, Data(out_dict).get_lines())
+        self.assertEqual([in_values], Data(out_dict).get_lines())
 
     def test_data_list_of_list(self):
         in_header = ['Name', 'Code']
@@ -99,7 +100,8 @@ class TestData(TestCase):
         self.assertEqual(Data(out_list, has_header=True).to_dictlist(), out_dictlist)
         self.assertEqual(Data(in_inline_values, has_header=True).to_list(), out_list)
         self.assertEqual(Data(in_values, has_header=False).get_lines(), in_values)
-        self.assertEqual(Data(in_values, has_header=False).get_header(), [0, 1])
+        self.assertEqual(Data(in_values, has_header=False).get_default_header(), [0, 1])
+        self.assertEqual(Data(in_values, has_header=False).get_header(), [])
         self.assertEqual(Data(in_values, header=in_header).to_list(), out_list)
         self.assertEqual(in_header, Data(in_inline_values, has_header=True).get_header())
         self.assertEqual(in_values, Data(in_inline_values, has_header=True).get_lines())
@@ -125,3 +127,30 @@ class TestData(TestCase):
         self.assertEqual(Data(out_dictlist, has_header=False).to_list(), out_list)
         self.assertEqual(Data(out_dictlist, has_header=True).to_list(), out_list)
         self.assertEqual(Data(out_list, has_header=True).to_dictlist(), out_dictlist)
+
+    def test_pretty_table(self):
+        in_header = ['Code', 'Name']
+        in_values = [['MyCode1', 'MyName1'], ['MyCode2', 'MyName2']]
+        out_list = [in_header, in_values]
+        out_dict1 = {
+            'Name': 'MyName1',
+            'Code': 'MyCode1',
+        }
+        out_dict2 = {
+            'Name': False,
+            'Code': True,
+        }
+        out_dict3 = {
+            'Name': True,
+            'Code': False,
+        }
+        out_dict4 = {
+            'Name': None,
+            'Code': 'end',
+        }
+        out_dictlist = [out_dict1, out_dict2, out_dict3, out_dict4]
+        from dyools import Data
+        d = Data(out_dictlist)
+        x = d.get_pretty_table(pretty=True)
+        print(x)
+        self.assertEqual(1, 2)

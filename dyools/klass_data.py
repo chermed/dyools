@@ -1,11 +1,13 @@
 from prettytable import PrettyTable
 
 from .klass_is import IS
+from .klass_str import Str
 
 
 class Data(object):
 
-    def __init__(self, data, has_header=True, header=[]):
+    def __init__(self, data, has_header=True, header=[], name='__NAME'):
+        self.name = name
         header, lines = self._normalize_origin(data, has_header, header)
         self.lines = lines[::]
         self.header = header[::]
@@ -16,27 +18,32 @@ class Data(object):
         lines = []
         if IS.dict_of_dict(data):
             origin = data.copy()
-            header = ['name']
+            header = [self.name]
             for key, values in origin.items():
-                line = [key]
                 for k in sorted(values.keys()):
-                    line.append(values[k])
                     if k not in header:
                         header.append(k)
+            for key, values in origin.items():
+                line = [key]
+                for h in header[1:]:
+                    line.append(values.get(h, None))
                 lines.append(line)
         elif IS.dict_of_values(data):
             header = sorted(list(data.keys()))
-            lines = [data[k] for k in header]
+            lines = [[data[k] for k in header]]
         elif IS.list_of_dict(data):
             origin = data[::]
-            header = []
-            lines = []
+            if origin:
+                header = []
             for item in origin:
-                line = []
                 for key in sorted(item.keys()):
                     if key not in header:
                         header.append(key)
-                    line.append(item[key])
+            lines = []
+            for item in origin:
+                line = []
+                for h in header:
+                    line.append(item.get(h, None))
                 lines.append(line)
         elif IS.list_of_list(data):
             origin = data[::]
@@ -57,18 +64,32 @@ class Data(object):
     def get_lines(self):
         return self.lines
 
-    def get_header(self):
-        header = self.header
+    def get_default_header(self):
+        header = self.get_header()
         if not header and self.lines:
             header = [x for x in range(len(self.lines[0]))]
         return header
 
-    def get_pretty_table(self):
-        tbl_data = self.to_list()
+    def get_header(self):
+        return self.header
+
+    def get_pretty_table(self, pretty=True):
+        def t(v):
+            if not pretty:
+                return v
+            if v is None:
+                return '-'
+            if isinstance(v, bool):
+                return 'X' if v else ''
+            return v
+
         x = PrettyTable()
-        x.field_names = tbl_data[0]
+        if pretty:
+            x.field_names = [Str(x).to_title() for x in self.get_default_header()]
+        else:
+            x.field_names = self.get_default_header()
         for item in self.get_lines():
-            x.add_row(item)
+            x.add_row([t(x) for x in item])
         return x
 
     def to_list(self):

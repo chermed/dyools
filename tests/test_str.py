@@ -35,9 +35,17 @@ class TestStr(TestCase):
 
     def test_replace(self):
         from dyools import Str
-        s = Str('éçàèé').replace(
+        s = Str('éçàèé').replace(dict(
             e=['é', 'è', 'ê'],
             c='ç',
             a=['à', 'â'],
-        )
+        ))
         self.assertEqual(s, 'ecaee')
+
+    def test_to_title(self):
+        from dyools import Str
+        self.assertEqual(Str('__name').to_title(), 'Name')
+        self.assertEqual(Str('__name.x').to_title(), 'Name X')
+        self.assertEqual(Str('__name.last').to_title(), 'Name Last')
+        self.assertEqual(Str('__name_LAST').to_title(), 'Name Last')
+        self.assertEqual(Str('__name_LAST___').to_title(), 'Name Last')

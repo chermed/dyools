@@ -6,46 +6,55 @@ import click
 from past.builtins import basestring
 
 
+def clean_msg(msg):
+    if not isinstance(msg, basestring):
+        try:
+            msg = '{}'.format(msg)
+        except:
+            pass
+    return msg
+
+
 class Logger(object):
-    def _clean_msg(self, msg):
-        if not isinstance(msg, basestring):
-            try:
-                msg = '{}'.format(msg)
-            except:
-                pass
-        return msg
 
-    def info(self, msg, exit=False):
-        click.echo(self._clean_msg(msg))
+    @classmethod
+    def info(cls, msg, exit=False):
+        click.echo(clean_msg(msg))
         if exit:
             sys.exit(-1)
 
-    def warn(self, msg, exit=False):
-        click.secho(self._clean_msg(msg), fg='yellow')
+    @classmethod
+    def warning(cls, msg, exit=False):
+        click.secho(clean_msg(msg), fg='yellow')
         if exit:
             sys.exit(-1)
 
-    def debug(self, msg, exit=False):
-        click.secho(self._clean_msg(msg), fg='blue')
+    @classmethod
+    def debug(cls, msg, exit=False):
+        click.secho(clean_msg(msg), fg='blue')
         if exit:
             sys.exit(-1)
 
-    def success(self, msg, exit=False):
-        click.secho(self._clean_msg(msg), fg='green')
+    @classmethod
+    def success(cls, msg, exit=False):
+        click.secho(clean_msg(msg), fg='green')
         if exit:
             sys.exit(-1)
 
-    def code(self, msg, exit=False):
-        click.secho(self._clean_msg(msg), fg='cyan')
+    @classmethod
+    def code(cls, msg, exit=False):
+        click.secho(clean_msg(msg), fg='cyan')
         if exit:
             sys.exit(-1)
 
-    def error(self, msg, exit=True):
-        click.secho(self._clean_msg(msg), fg='red')
+    @classmethod
+    def error(cls, msg, exit=True):
+        click.secho(clean_msg(msg), fg='red')
         if exit:
             sys.exit(-1)
 
-    def title(self, msg, exit=False):
-        click.secho(self._clean_msg(msg), fg='white', bold=True)
+    @classmethod
+    def title(cls, msg, exit=False):
+        click.secho(clean_msg(msg), fg='white', bold=True)
         if exit:
             sys.exit(-1)
