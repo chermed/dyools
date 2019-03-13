@@ -6,6 +6,7 @@ import re
 import shutil
 import tempfile
 from contextlib import contextmanager
+from os.path import expanduser
 
 from .klass_str import Str
 
@@ -73,11 +74,17 @@ class Path(object):
                 _erase_data(path, content)
 
     @classmethod
-    def touch(cls, path):
+    def home(cls):
+        return expanduser("~")
+
+    @classmethod
+    def touch(cls, *path):
+        path = os.path.join(*path)
         cls.create_dir(os.path.dirname(path))
         if not os.path.isfile(path):
             with open(path, 'w+') as f:
                 pass
+        return path
 
     @classmethod
     def create_dir(cls, path):

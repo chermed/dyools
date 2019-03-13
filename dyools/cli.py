@@ -1,30 +1,14 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
-import os
-from os.path import expanduser
-
 import click
+from past.types import basestring
 
 from .klass_data import Data
+from .klass_path import Path
 from .klass_print import Print
 from .klass_yaml_config import YamlConfig
 
-home = expanduser("~")
-home = os.path.join(home, '.dyvz')
-
-CONFIG_FILE = os.path.join(home, 'dyools.yml')
-
-DEFAULT_CONFIG = {
-    'host': 'localhost',
-    'port': 8069,
-    'database': 'demo',
-    'user': 'admin',
-    'password': 'admin',
-    'superadminpassword': 'admin',
-    'protocol': 'jsonrpc',
-    'mode': 'dev',
-    'default': False,
-}
+CONFIG_FILE = Path.touch(Path.home(), '.dyvz', 'dyools.yml')
 
 
 class ConfigEnum(object):
@@ -41,6 +25,25 @@ class ConfigEnum(object):
     DEVELOPPEMENT = 'developpement'
     MODES = [PRODUCTION, TEST, DEVELOPPEMENT]
     PROTOCOLS = ['jsonrpc', 'jsonrpc+ssl']
+    DEFAULT = 'default'
+
+
+DEFAULT_CONFIG = {
+    ConfigEnum.HOST: 'localhost',
+    ConfigEnum.PORT: 8069,
+    ConfigEnum.DATABASE: 'demo',
+    ConfigEnum.USER: 'admin',
+    ConfigEnum.PASSWORD: 'admin',
+    ConfigEnum.SUPERADMINPASSWORD: 'admin',
+    ConfigEnum.PROTOCOL: 'jsonrpc',
+    ConfigEnum.MODE: 'dev',
+    ConfigEnum.DEFAULT: False,
+}
+
+
+def _check_production(ctx, config):
+    if config.get(ConfigEnum.MODE, ConfigEnum.PRODUCTION) == ConfigEnum.PRODUCTION:
+        click.confirm('Production environment, do you want to continue?', abort=True)
 
 
 @click.group()
@@ -73,18 +76,14 @@ class ConfigEnum(object):
 def cli(ctx, database, host, port, user, password, superadminpassword, protocol, timeout, config, load, mode,
         prompt_login, prompt_connect, yes, no_context, debug, workers):
     yaml_obj = YamlConfig(config)
-    current_config = yaml_obj.get(default=True) or DEFAULT_CONFIG
-    configs = yaml_obj.get_data() or DEFAULT_CONFIG
+    configs = yaml_obj.get_data()
     ctx.obj = {}
-    ctx.obj['config_obj'] = yaml_obj
-    ctx.obj['configs'] = configs
-    ctx.obj['current_config'] = current_config
     if load:
         if load not in configs:
             Print.error('The configuration [{}] not found!'.format(load))
-        current_config = yaml_obj.get(name=load)
+        current_config = yaml_obj.get_values(name=load)
     else:
-        current_config = yaml_obj.get(default=True) or DEFAULT_CONFIG
+        current_config = yaml_obj.get_values(default=True) or DEFAULT_CONFIG
     if host is not None:
         current_config[ConfigEnum.HOST] = host
     if port is not None:
@@ -99,8 +98,9 @@ def cli(ctx, database, host, port, user, password, superadminpassword, protocol,
         current_config[ConfigEnum.SUPERADMINPASSWORD] = superadminpassword
     if protocol is not None:
         current_config[ConfigEnum.PROTOCOL] = protocol
-    if current_config.get(ConfigEnum.MODE, ConfigEnum.PRODUCTION) == ConfigEnum.PRODUCTION:
-        click.confirm('Production environnement, do you want to continue?', abort=True)
+    ctx.obj['config_obj'] = yaml_obj
+    ctx.obj['configs'] = configs
+    ctx.obj['current_config'] = current_config
 
 
 @cli.command('create')
@@ -109,17 +109,19 @@ def cli(ctx, database, host, port, user, password, superadminpassword, protocol,
 def __create_config(ctx, name):
     """Create a new configuration"""
     configs = ctx.obj['configs']
+    current_config = ctx.obj['current_config']
     if name in configs:
-        Print.error('The name [{}] is already exists !'.format(name))
-    host = click.prompt(ConfigEnum.HOST, default=DEFAULT_CONFIG[ConfigEnum.HOST], type=str)
-    port = click.prompt(ConfigEnum.PORT, default=DEFAULT_CONFIG[ConfigEnum.PORT], type=int)
-    database = click.prompt(ConfigEnum.DATABASE, default=DEFAULT_CONFIG[ConfigEnum.DATABASE], type=str)
-    user = click.prompt(ConfigEnum.USER, default=DEFAULT_CONFIG[ConfigEnum.USER], type=str)
-    password = click.prompt(ConfigEnum.PASSWORD, default=DEFAULT_CONFIG[ConfigEnum.PASSWORD], type=str)
+        if not click.confirm('The name [{}] is already exists ! continue to update ?'.format(name)):
+            ctx.abort()
+    host = click.prompt(ConfigEnum.HOST, default=current_config[ConfigEnum.HOST], type=str)
+    port = click.prompt(ConfigEnum.PORT, default=current_config[ConfigEnum.PORT], type=int)
+    database = click.prompt(ConfigEnum.DATABASE, default=current_config[ConfigEnum.DATABASE], type=str)
+    user = click.prompt(ConfigEnum.USER, default=current_config[ConfigEnum.USER], type=str)
+    password = click.prompt(ConfigEnum.PASSWORD, default=current_config[ConfigEnum.PASSWORD], type=str)
     superadminpassword = click.prompt(ConfigEnum.SUPERADMINPASSWORD,
-                                      default=DEFAULT_CONFIG[ConfigEnum.SUPERADMINPASSWORD], type=str)
-    protocol = click.prompt(ConfigEnum.PROTOCOL, default=DEFAULT_CONFIG[ConfigEnum.PROTOCOL], type=str)
-    mode = click.prompt(ConfigEnum.MODE, default=DEFAULT_CONFIG[ConfigEnum.MODE], type=str)
+                                      default=current_config[ConfigEnum.SUPERADMINPASSWORD], type=str)
+    protocol = click.prompt(ConfigEnum.PROTOCOL, default=current_config[ConfigEnum.PROTOCOL], type=str)
+    mode = click.prompt(ConfigEnum.MODE, default=current_config[ConfigEnum.MODE], type=str)
     data = DEFAULT_CONFIG.copy()
     data.update(dict(
         host=host,
@@ -131,15 +133,73 @@ def __create_config(ctx, name):
         protocol=protocol,
         mode=mode))
     ctx.obj['config_obj'].add(name, **data)
+    ctx.obj['config_obj'].switch(name, 'default', True, False)
     ctx.obj['config_obj'].dump()
 
 
+def __list_configurations(ctx, filter=False, index=False):
+    configs = ctx.obj['configs']
+    data = Data(configs)
+    tbl = data.get_pretty_table(add_index=True, filter=filter, index=index)
+    Print.info(tbl, header="List of configurations", total=len(tbl._rows))
+
+
 @cli.command('list')
+@click.argument('filter', required=False)
 @click.pass_context
-def __list(ctx):
+def __list(ctx, filter):
+    """List of configurations"""
+    __list_configurations(ctx, filter)
+
+
+@cli.command('use')
+@click.argument('filter', required=False)
+@click.pass_context
+def __use(ctx, filter):
     """List of configurations"""
     configs = ctx.obj['configs']
     data = Data(configs)
-    len_tbl = len(configs)
-    tbl = data.get_pretty_table()
-    Print.info(tbl, header="List of configurations", total=len_tbl)
+    __list_configurations(ctx, filter)
+    if not filter:
+        filter = click.prompt('Enter the name or the index of a configuration to use')
+    name = index = False
+    for i, item in enumerate(data.get_lines(), 1):
+        if filter:
+            if isinstance(filter, basestring) and filter.strip().isdigit() and int(filter) == i:
+                name = item[0]
+                index = i
+            if item[0] == filter:
+                name = item[0]
+                index = i
+    if not name:
+        Print.error('please retry with an other filter !')
+    ctx.obj['config_obj'].switch(name, ConfigEnum.DEFAULT, True, False)
+    ctx.obj['config_obj'].dump()
+    __list_configurations(ctx, False, index=index)
+
+
+@cli.command('delete')
+@click.argument('filter', required=False)
+@click.pass_context
+def __delete(ctx, filter):
+    """Delete a configuration"""
+    configs = ctx.obj['configs']
+    data = Data(configs)
+    __list_configurations(ctx, filter)
+    if not filter:
+        filter = click.prompt('Enter the name or the index of a configuration to delete')
+    name = index = False
+    for i, item in enumerate(data.get_lines(), 1):
+        if filter:
+            if isinstance(filter, basestring) and filter.strip().isdigit() and int(filter) == i:
+                name = item[0]
+                index = i
+            if item[0] == filter:
+                name = item[0]
+                index = i
+    if not name:
+        Print.error('please retry with an other filter !')
+    click.confirm('Are you sure you want to delete the configuration [{}]'.format(name), abort=True)
+    ctx.obj['config_obj'].delete(name=name)
+    ctx.obj['config_obj'].dump()
+    __list_configurations(ctx, False, index=index)

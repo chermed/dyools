@@ -73,7 +73,7 @@ class Data(object):
     def get_header(self):
         return self.header
 
-    def get_pretty_table(self, pretty=True):
+    def get_pretty_table(self, pretty=True, add_index=False, filter=False, index=False):
         def t(v):
             if not pretty:
                 return v
@@ -83,12 +83,22 @@ class Data(object):
                 return 'X' if v else ''
             return v
 
+        header = self.get_default_header()
+        if add_index:
+            header = ['Index'] + header
         x = PrettyTable()
         if pretty:
-            x.field_names = [Str(x).to_title() for x in self.get_default_header()]
+            x.field_names = [Str(x).to_title() for x in header]
         else:
-            x.field_names = self.get_default_header()
-        for item in self.get_lines():
+            x.field_names = header
+
+        for i, item in enumerate(self.get_lines(), 1):
+            if index and index != i:
+                continue
+            if add_index:
+                item = [i] + item
+            if filter and filter.lower() not in '{}'.format(item).lower():
+                continue
             x.add_row([t(x) for x in item])
         return x
 

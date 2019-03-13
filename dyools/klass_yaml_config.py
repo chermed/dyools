@@ -52,6 +52,13 @@ class YamlConfig(object):
                 res.update({key: values})
         return res
 
+    def get_values(self, **kwargs):
+        res = {}
+        data = self.get(**kwargs)
+        for k, v in data.items():
+            res.update(v)
+        return res
+
     def add(self, name, **kwargs):
         kwargs.pop('name', False)
         item = self.get(name=name)
