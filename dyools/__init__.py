@@ -3,6 +3,7 @@ from .klass_consumer import Consumer
 from .klass_convert import Convert
 from .klass_data import Data
 from .klass_date import Date
+from .klass_debug import log
 from .klass_df import DF
 from .klass_eval import Eval
 from .klass_inspect import Inspect

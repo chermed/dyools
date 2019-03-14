@@ -1,18 +1,19 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import sys
-import traceback
 
 import click
 from past.types import basestring
 
 from .klass_data import Data
 from .klass_odoo_rpc import RPC
+from .klass_operator import Operator
 from .klass_path import Path
 from .klass_print import Print
 from .klass_yaml_config import YamlConfig
 
 CONFIG_FILE = Path.touch(Path.home(), '.dyvz', 'dyools.yml')
+ORDER = dict(id=1, display_name=2, name=2, key=3, user_id=4, partner_id=5, product_id=6)
 
 
 class ConfigEnum(object):
@@ -167,8 +168,8 @@ def cli(ctx, database, host, port, user, password, superadminpassword, protocol,
                 current_config[ConfigEnum.MODE], timeout / 60))
             new_rpc = RPC(
                 host=current_config[ConfigEnum.HOST],
-                                    port=current_config[ConfigEnum.PORT],
-                                    dbname=current_config[ConfigEnum.DATABASE],
+                port=current_config[ConfigEnum.PORT],
+                dbname=current_config[ConfigEnum.DATABASE],
                 protocol=current_config[ConfigEnum.PROTOCOL],
                 timeout=timeout)
             new_rpc.config['auto_context'] = not no_context
@@ -179,14 +180,14 @@ def cli(ctx, database, host, port, user, password, superadminpassword, protocol,
                 ''.join([x for x in new_rpc.version.strip() if x.isdigit() or x == '.']).split('.')[0])
             new_rpc = RPC(
                 host=current_config[ConfigEnum.HOST],
-                                    port=current_config[ConfigEnum.PORT],
-                                    dbname=current_config[ConfigEnum.DATABASE],
+                port=current_config[ConfigEnum.PORT],
+                dbname=current_config[ConfigEnum.DATABASE],
                 protocol=current_config[ConfigEnum.PROTOCOL],
                 timeout=timeout)
             Print.info('Try to login to the database %s as %s' % (
                 current_config[ConfigEnum.DATABASE], current_config[ConfigEnum.USER]))
             new_rpc.login(current_config[ConfigEnum.DATABASE], current_config[ConfigEnum.USER],
-                           current_config[ConfigEnum.PASSWORD])
+                          current_config[ConfigEnum.PASSWORD])
             Print.success('Connected to the database %s as %s' % (
                 current_config[ConfigEnum.DATABASE], current_config[ConfigEnum.USER]))
         except:
@@ -330,9 +331,58 @@ def __login(ctx, user, password):
 @click.argument('port', required=False)
 @click.pass_context
 def __connect(ctx, host, port):
-    """Login to the database"""
+    """Connect to the server"""
     if host:
         ctx.obj['current_config'].update(dict(host=host))
     if port:
         ctx.obj['current_config'].update(dict(port=port))
     ctx.obj['action_connect']()
+
+
+@cli.command('param')
+@click.argument('key', default=None, required=False)
+@click.argument('value', default=None, required=False)
+@click.pass_context
+def __params(ctx, key, value):
+    """Manage parameters"""
+    rpc = ctx.obj['action_login']()
+    fields = ['id', 'key', 'value']
+    domain = []
+    result = None
+    if key:
+        result = rpc.get_param(key)
+    if value is not None:
+        result = rpc.set_param(key, value)
+    if result is None:
+        data = Data(rpc.read('ir.config_parameter', domain=domain, fields=fields), header=fields)
+        Print.info(data.get_pretty_table())
+    else:
+        Print.info('[{} => {}]'.format(key, result))
+
+
+@cli.command('data')
+@click.argument('model', default=None, required=True)
+@click.option('domain', '-d', type=click.STRING, default='', help="Domain")
+@click.option('limit', '-l', type=click.INT, default=0, help="Limit")
+@click.option('order', '-o', type=click.STRING, default='', help="Order")
+@click.option('fields', '-f', multiple=True, type=click.STRING, default='', help="Fields to show")
+@click.pass_context
+def __data(ctx, model, domain, limit, order, fields):
+    """Show the data"""
+    fields = Operator.split_and_flat(',', fields) if fields else ['id', 'name']
+    rpc = ctx.obj['action_login']()
+    kwargs = dict(domain=domain, fields=fields)
+    if limit: kwargs.update(dict(limit=limit))
+    if order: kwargs.update(dict(order=order))
+    Data(rpc.read(model, **kwargs), header=fields).show()
+
+
+@cli.command('fields')
+@click.argument('model', default=None, required=True)
+@click.option('fields', '-f', multiple=True, type=click.STRING, default='', help="Fields to show")
+@click.pass_context
+def __fields(ctx, model, fields):
+    """Fields of a model"""
+    rpc = ctx.obj['action_login']()
+    fields = Operator.unique(['name', 'type'] + Operator.split_and_flat(',', fields))
+    Data(rpc.env[model].fields_get(), header=fields, name='name').show()

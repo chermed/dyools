@@ -9,6 +9,7 @@ import odoorpc
 from past.builtins import basestring
 from prettytable import PrettyTable
 
+from .klass_is import IS
 from .klass_path import Path
 from .klass_tool import Tool
 
@@ -119,14 +120,25 @@ class Mixin(object):
             module = importlib.import_module(module)
         return os.path.dirname(module.__file__)
 
-    def get(self, model, domain=[], limit=False, order=False, **kwargs):
+    def read(self, model, domain=[], limit=False, order=False, fields=[], **kwargs):
+        self._require_env()
+        model, domain, search_kwargs = self._get(model, domain, limit, order, **kwargs)
+        ids = self.env[model].search(domain, **search_kwargs)
+        if IS.list_of_values(ids):
+            return self.env[model].read(ids, fields)
+        else:
+            return ids.read(fields)
+
+    def _get(self, model, domain=[], limit=False, order=False, **kwargs):
         self._require_env()
         records = model
-        if isinstance(domain, int):
+        if not domain:
+            domain = []
+        elif isinstance(domain, int):
             domain = [('id', '=', domain)]
         elif isinstance(domain, tuple):
             domain = [domain]
-        if isinstance(domain, basestring) and len(domain.split()) < 3:
+        elif isinstance(domain, basestring) and len(domain.split()) < 3:
             domain = [('name', '=', domain)]
         elif isinstance(domain, basestring):
             domain = Tool.contruct_domain_from_str(domain)
@@ -141,8 +153,13 @@ class Mixin(object):
         search_kwargs = {}
         if limit: search_kwargs['limit'] = limit
         if order: search_kwargs['order'] = order
+        return model, domain, search_kwargs
+
+    def get(self, model, domain=[], limit=False, order=False, **kwargs):
+        self._require_env()
+        model, domain, search_kwargs = self._get(model, domain, limit, order, **kwargs)
         res = self.env[model].search(domain, **search_kwargs)
-        res = self.obj(model, res)
+        res = self.to_obj(model, res)
         return res
 
     def update_xmlid(self, record, xmlid=False):
@@ -169,13 +186,21 @@ class Mixin(object):
     def config(self, **kwargs):
         model = 'res.config.settings'
         res = self.env[model].create(kwargs)
-        res = self.obj(model, res)
+        res = self.to_obj(model, res)
         res.execute()
 
-    def obj(self, model, res):
+    def to_obj(self, model, res):
         if isinstance(res, (int, list)):
             return self.env[model].browse(res)
         return res
+
+    def to_ids(self, res):
+        if isinstance(res, int):
+            return [res]
+        elif isinstance(res, list):
+            return res
+        else:
+            return res
 
     def ref(self, xmlid, raise_if_not_found=True):
         self._require_env()
@@ -186,11 +211,11 @@ class Mixin(object):
         if isinstance(addons, basestring):
             addons = addons.split()
         addons = self.env['ir.module.module'].search([('name', 'in', addons)])
-        addons = self.obj('ir.module.module', addons)
+        addons = self.to_obj('ir.module.module', addons)
         addons_names = addons.mapped('name')
         self.show(addons, fields=['name', 'state'], title="modules before")
         addons = self.env['ir.module.module'].search([('name', 'in', addons_names)])
-        addons = self.obj('ir.module.module', addons)
+        addons = self.to_obj('ir.module.module', addons)
         assert op in ['install', 'upgrade', 'uninstall'], "opeartion %s is npt mapped" % op
         if op == 'install':
             addons.button_immediate_install()

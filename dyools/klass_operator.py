@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 from .klass_is import IS
+from .klass_debug import log
 
 
 class Operator(object):
@@ -26,7 +27,7 @@ class Operator(object):
             for item in sequence:
                 found = False
                 for res in result:
-                    if res is item:
+                    if res == item and type(res) == type(item):
                         found = True
                         break
                 if not found:
@@ -42,3 +43,13 @@ class Operator(object):
             if IS.str(item):
                 result[i] = item.split(sep)
         return cls.flat(result)
+
+    @classmethod
+    def unique_intersection(cls, *lists):
+        result = []
+        items = cls.flat(lists)
+        items = cls.unique(items)
+        for item in items:
+            if all([item in x for x in lists]):
+                result.append(item)
+        return cls.unique(result)

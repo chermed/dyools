@@ -152,5 +152,3 @@ class TestData(TestCase):
         from dyools import Data
         d = Data(out_dictlist)
         x = d.get_pretty_table(pretty=True)
-        print(x)
-        self.assertEqual(1, 2)

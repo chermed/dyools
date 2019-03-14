@@ -1,6 +1,8 @@
 from prettytable import PrettyTable
 
+from .klass_operator import Operator
 from .klass_is import IS
+from .klass_print import Print
 from .klass_str import Str
 
 
@@ -16,6 +18,7 @@ class Data(object):
         if not data:
             data = []
         lines = []
+        in_header = header[::]
         if IS.dict_of_dict(data):
             origin = data.copy()
             header = [self.name]
@@ -23,13 +26,20 @@ class Data(object):
                 for k in sorted(values.keys()):
                     if k not in header:
                         header.append(k)
+            if in_header:
+                header = Operator.unique_intersection(in_header, header)
             for key, values in origin.items():
-                line = [key]
-                for h in header[1:]:
-                    line.append(values.get(h, None))
+                line = []
+                for h in header:
+                    if h == self.name:
+                        line.append(key)
+                    else:
+                        line.append(values.get(h, None))
                 lines.append(line)
         elif IS.dict_of_values(data):
             header = sorted(list(data.keys()))
+            if in_header:
+                header = Operator.unique_intersection(in_header, header)
             lines = [[data[k] for k in header]]
         elif IS.list_of_dict(data):
             origin = data[::]
@@ -40,6 +50,8 @@ class Data(object):
                     if key not in header:
                         header.append(key)
             lines = []
+            if in_header:
+                header = Operator.unique_intersection(in_header, header)
             for item in origin:
                 line = []
                 for h in header:
@@ -91,7 +103,8 @@ class Data(object):
             x.field_names = [Str(x).to_title() for x in header]
         else:
             x.field_names = header
-
+        for f in x.field_names:
+            x.align[f] = 'l'
         for i, item in enumerate(self.get_lines(), 1):
             if index and index != i:
                 continue
@@ -122,3 +135,6 @@ class Data(object):
             else:
                 res.append({k: v for k, v in zip(header, line)})
         return res
+
+    def show(self, pretty=True, add_index=False, filter=False, index=False):
+        Print.info(self.get_pretty_table(pretty=pretty, add_index=add_index, filter=filter, index=index))
