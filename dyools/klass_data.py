@@ -85,7 +85,7 @@ class Data(object):
     def get_header(self):
         return self.header
 
-    def get_pretty_table(self, pretty=True, add_index=False, filter=False, index=False):
+    def get_pretty_table(self, pretty=True, add_index=False, grep=False, index=False):
         def t(v):
             if not pretty:
                 return v
@@ -110,7 +110,7 @@ class Data(object):
                 continue
             if add_index:
                 item = [i] + item
-            if filter and filter.lower() not in '{}'.format(item).lower():
+            if grep and grep.lower() not in '{}'.format(item).lower():
                 continue
             x.add_row([t(x) for x in item])
         return x
@@ -136,5 +136,5 @@ class Data(object):
                 res.append({k: v for k, v in zip(header, line)})
         return res
 
-    def show(self, pretty=True, add_index=False, filter=False, index=False):
-        Print.info(self.get_pretty_table(pretty=pretty, add_index=add_index, filter=filter, index=index))
+    def show(self, pretty=True, add_index=False, grep=False, index=False):
+        Print.info(self.get_pretty_table(pretty=pretty, add_index=add_index, grep=grep, index=index))

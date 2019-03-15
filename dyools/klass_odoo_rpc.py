@@ -7,9 +7,11 @@ from urllib.parse import urlparse
 
 import odoorpc
 
+from .klass_yaml_config import YamlConfig
 from .klass_odoo_mixin import Mixin
 from .klass_path import Path
 
+CONFIG_FILE = Path.touch(Path.home(), '.dyvz', 'dyools.yml')
 
 class RPC(Mixin):
     def __init__(self, *args, **kwargs):
@@ -18,6 +20,8 @@ class RPC(Mixin):
             kwargs[items[i]] = arg
         server = kwargs.get('server') or (args and args[0]) or False
         server = os.environ.get(kwargs['from_env']) if kwargs.get('from_env') else server
+        config_name = kwargs.get('config_name')
+        config_file = kwargs.get('config_file')  or CONFIG_FILE
         if server:
             url = urlparse(server)
             if url.scheme and url.netloc and url.query:
@@ -29,6 +33,8 @@ class RPC(Mixin):
                 url_loc = url.netloc.split(':')
                 kwargs['host'] = url_loc[0]
                 kwargs['port'] = int(url_loc[1]) if len(url_loc) == 2 else (443 if url_ssl else 80)
+        if config_name:
+            kwargs.update(YamlConfig(config_file).get_values(name=config_name))
         host = kwargs.get('host', os.environ.get('RPC_HOST'))
         port = kwargs.get('port', os.environ.get('RPC_PORT'))
         dbname = kwargs.get('dbname', kwargs.get('database', os.environ.get('RPC_DBNAME')))
