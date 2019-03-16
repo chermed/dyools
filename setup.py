@@ -36,13 +36,18 @@ setup(
         'xlrd',
         'requests',
         'psutil',
+        'faker',
+        'lxml',
+
     ],
     setup_requires=['pytest-runner', ],
     tests_require=['pytest', ],
     entry_points='''
         [console_scripts]
-        dyools_launch_ws=dyools:ws_start_agent
-        zz=dyools:cli
+        ws_agent=dyools:cli_ws_agent
+        rpc=dyools:cli_rpc
+        tool=dyools:cli_tool
+        xml=dyools:cli_xml
     ''',
 
 )

@@ -7,11 +7,12 @@ from urllib.parse import urlparse
 
 import odoorpc
 
-from .klass_yaml_config import YamlConfig
 from .klass_odoo_mixin import Mixin
 from .klass_path import Path
+from .klass_yaml_config import YamlConfig
 
 CONFIG_FILE = Path.touch(Path.home(), '.dyvz', 'dyools.yml')
+
 
 class RPC(Mixin):
     def __init__(self, *args, **kwargs):
@@ -21,7 +22,7 @@ class RPC(Mixin):
         server = kwargs.get('server') or (args and args[0]) or False
         server = os.environ.get(kwargs['from_env']) if kwargs.get('from_env') else server
         config_name = kwargs.get('config_name')
-        config_file = kwargs.get('config_file')  or CONFIG_FILE
+        config_file = kwargs.get('config_file') or CONFIG_FILE
         if server:
             url = urlparse(server)
             if url.scheme and url.netloc and url.query:
@@ -109,8 +110,8 @@ class RPC(Mixin):
         path = os.path.join(dest, filename)
         with open(path, 'wb+') as destination:
             kwargs = {}
-            if not zip: kwargs['backup_format'] = 'custom'
-            dump = self.odoo.db.dump(self.superadminpassword, self.dbname)
+            if not zip: kwargs['format_'] = 'custom'
+            dump = self.odoo.db.dump(self.superadminpassword, self.dbname, **kwargs)
             with open(path, 'wb') as dump_zip:
                 dump_zip.write(dump.read())
         print('End: %s' % path)
@@ -118,13 +119,14 @@ class RPC(Mixin):
         print('Backup Size: %s' % size)
         return path
 
-    def drop_db(self):
-        if self.dbname in self.list_db():
-            self.odoo.db.drop(self.superadminpassword, self.dbname)
-            print('End: dbname=%s is dropped' % self.dbname)
+    def drop_db(self, dbname=False):
+        dbname = dbname or self.dbname
+        if dbname in self.list_db():
+            self.odoo.db.drop(self.superadminpassword, dbname)
+            print('End: dbname=%s is dropped' % dbname)
         else:
-            print('The database [%s] is not found' % self.dbname)
-        return self.dbname
+            print('The database [%s] is not found' % dbname)
+        return dbname
 
     def restore_db(self, path, drop=False):
         assert os.path.isfile(path), 'The path [%s] should be a file' % path

@@ -58,11 +58,13 @@ class Path(object):
         return elements if not isfile else elements[:-1]
 
     @classmethod
-    def create_file(cls, path, content):
+    def create_file(cls, path, content, eof=0):
         def _erase_data(_path, _content):
             with open(_path, 'w+') as f:
                 f.write(_content)
 
+        if eof:
+            content += '\n' * eof
         if not os.path.isfile(path):
             ddir = os.path.dirname(path)
             cls.create_dir(ddir)

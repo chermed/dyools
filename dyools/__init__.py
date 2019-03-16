@@ -1,4 +1,7 @@
-from .cli import cli
+from .cli_rpc import cli_rpc
+from .cli_tool import cli_tool
+from .cli_ws_agent import cli_ws_agent
+from .cli_xml import cli_xml
 from .klass_consumer import Consumer
 from .klass_convert import Convert
 from .klass_data import Data
@@ -20,7 +23,8 @@ from .klass_sftp import SFTP
 from .klass_str import Str
 from .klass_table import Table
 from .klass_tool import Tool
-from .klass_ws import WS, ws_start_agent
+from .klass_ws import WS
 from .klass_xlsreader import XlsReader
 from .klass_xlswriter import XlsWriter
+from .klass_xml import XML
 from .klass_yaml_config import YamlConfig

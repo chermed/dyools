@@ -1,0 +1,729 @@
+from __future__ import (absolute_import, division, print_function, unicode_literals)
+
+import code
+import os
+import signal
+import sys
+from pprint import pformat
+from threading import Thread
+
+import click
+from past.types import basestring
+
+from .klass_data import Data
+from .klass_eval import Eval
+from .klass_odoo_rpc import RPC, CONFIG_FILE
+from .klass_operator import Operator
+from .klass_path import Path
+from .klass_print import Print
+from .klass_tool import Tool
+from .klass_xml import XML
+from .klass_yaml_config import YamlConfig
+
+ORDER = dict(id=1, display_name=2, name=2, key=3, user_id=4, partner_id=5, product_id=6)
+
+
+class ConfigEnum(object):
+    HOST = 'host'
+    PORT = 'port'
+    DATABASE = 'database'
+    USER = 'user'
+    PASSWORD = 'password'
+    SUPERADMINPASSWORD = 'superadminpassword'
+    PROTOCOL = 'protocol'
+    MODE = 'mode'
+    PRODUCTION = 'production'
+    TEST = 'test'
+    DEVELOPPEMENT = 'developpement'
+    MODES = [PRODUCTION, TEST, DEVELOPPEMENT]
+    JSONRPC = 'jsonrpc'
+    JSONRPC_SSL = 'jsonrpc+ssl'
+    PROTOCOLS = [JSONRPC, JSONRPC_SSL]
+    DEFAULT = 'default'
+
+
+DEFAULT_CONFIG = {
+    ConfigEnum.HOST: 'localhost',
+    ConfigEnum.PORT: 8069,
+    ConfigEnum.DATABASE: 'demo',
+    ConfigEnum.USER: 'admin',
+    ConfigEnum.PASSWORD: 'admin',
+    ConfigEnum.SUPERADMINPASSWORD: 'admin',
+    ConfigEnum.PROTOCOL: 'jsonrpc',
+    ConfigEnum.MODE: 'dev',
+    ConfigEnum.DEFAULT: False,
+}
+
+
+def _config_to_server(config):
+    schema = 'http://' if config.get(ConfigEnum.PROTOCOL, ConfigEnum.JSONRPC) == ConfigEnum.JSONRPC else 'https://'
+    fmt = '{schema}{host}:{port}/?database={database}&user={user}&password={password}&mode={mode}'
+    return fmt.format(schema=schema, **config)
+
+
+def _check_production(ctx, config):
+    if config.get(ConfigEnum.MODE, ConfigEnum.PRODUCTION) == ConfigEnum.PRODUCTION:
+        click.confirm('Production environment, do you want to continue?', abort=True)
+
+
+@click.group()
+@click.option('--database', '-d', type=click.STRING, default=None, help="Database")
+@click.option('--host', '-h', type=click.STRING, default=None, help="Host")
+@click.option('--load', '-l', type=click.STRING, help="Name")
+@click.option('--config', '-c',
+              type=click.Path(
+                  exists=True,
+                  file_okay=True,
+                  dir_okay=False,
+                  writable=True,
+                  readable=True,
+                  resolve_path=True
+              ), default=CONFIG_FILE, help="Path of the configuration")
+@click.option('--port', '-p', type=click.INT, default=None, help="Port")
+@click.option('--user', '-u', type=click.STRING, default=None, help="User")
+@click.option('--password', '-w', type=click.STRING, default=None, help="Password")
+@click.option('--superadminpassword', '-s', type=click.STRING, default=None, help="Super admin password")
+@click.option('--protocol', type=click.Choice(ConfigEnum.PROTOCOLS), default=None, help="Protocol")
+@click.option('--mode', '-m', type=click.Choice(ConfigEnum.MODES), default=None, help="Mode")
+@click.option('--timeout', '-t', type=click.INT, default=60, help="Timeout in minutes")
+@click.option('--yes', is_flag=True, default=False)
+@click.option('--no-context', is_flag=True, default=False)
+@click.option('--debug', is_flag=True, default=False)
+@click.pass_context
+def cli_rpc(ctx, database, host, port, user, password, superadminpassword, protocol, timeout, config, load, mode, yes,
+            no_context, debug):
+    yaml_obj = YamlConfig(config)
+    configs = yaml_obj.get_data()
+    ctx.obj = {}
+    rpc = False
+    if load:
+        if load not in configs:
+            Print.error('The configuration [{}] not found!'.format(load))
+        current_config = yaml_obj.get_values(name=load)
+    else:
+        current_config = yaml_obj.get_values(default=True) or DEFAULT_CONFIG
+    if host is not None:
+        current_config[ConfigEnum.HOST] = host
+    if port is not None:
+        current_config[ConfigEnum.PORT] = port
+    if database is not None:
+        current_config[ConfigEnum.DATABASE] = database
+    if user is not None:
+        current_config[ConfigEnum.USER] = user
+    if password is not None:
+        current_config[ConfigEnum.PASSWORD] = password
+    if superadminpassword is not None:
+        current_config[ConfigEnum.SUPERADMINPASSWORD] = superadminpassword
+    if protocol is not None:
+        current_config[ConfigEnum.PROTOCOL] = protocol
+    if mode is not None:
+        current_config[ConfigEnum.MODE] = mode
+
+    def action_connect():
+        global rpc
+        if ConfigEnum.MODE == ConfigEnum.PRODUCTION:
+            if not yes and not click.confirm('You are in mode production, continue ?'):
+                sys.exit()
+        try:
+            Print.info('Try to connect to the host %s:%s, database=%s, mode=%s, timeout=%smin' % (
+                current_config[ConfigEnum.HOST], current_config[ConfigEnum.PORT], current_config[ConfigEnum.DATABASE],
+                current_config[ConfigEnum.MODE], timeout / 60))
+            rpc = RPC(**current_config)
+            rpc.odoo.config['auto_context'] = not no_context
+            Print.success(
+                'Connected to host %s:%s, database=%s, version=%s, mode=%s, timeout=%smin' % (
+                    current_config[ConfigEnum.HOST], current_config[ConfigEnum.PORT],
+                    current_config[ConfigEnum.DATABASE], rpc.version, current_config[ConfigEnum.MODE], timeout / 60))
+            ctx.obj['version'] = int(
+                ''.join([x for x in rpc.version.strip() if x.isdigit() or x == '.']).split('.')[0])
+        except:
+            Print.error('Cannot connect to host %s:%s, database=%s, mode=%s' % (
+                current_config[ConfigEnum.HOST], current_config[ConfigEnum.PORT], current_config[ConfigEnum.DATABASE],
+                current_config[ConfigEnum.MODE]))
+        return rpc
+
+    def action_login():
+        global rpc
+        rpc = action_connect()
+        if rpc:
+            rpc = RPC(**current_config)
+            try:
+                Print.info('Try to login to the database %s as %s' % (
+                    current_config[ConfigEnum.DATABASE], current_config[ConfigEnum.USER]))
+                rpc.login()
+                Print.success('Connected to the database %s as %s' % (
+                    current_config[ConfigEnum.DATABASE], current_config[ConfigEnum.USER]))
+            except:
+                Print.error('Cannot connect to the database %s as %s' % (
+                    current_config[ConfigEnum.DATABASE], current_config[ConfigEnum.USER]))
+        return rpc
+
+    def new_rpc(config_name, login=False):
+        if config_name not in configs:
+            Print.error('The configuration [{%s}] not found'.format(config_name))
+        new_config = configs[config_name]
+        new_rpc = False
+        if new_config[ConfigEnum.MODE] == ConfigEnum.PRODUCTION:
+            if not yes and not click.confirm('You are in mode production, continue ?'):
+                sys.exit()
+        try:
+            Print.info('Try to connect to the host %s:%s, database=%s, mode=%s, timeout=%smin' % (
+                new_config[ConfigEnum.HOST], new_config[ConfigEnum.PORT], new_config[ConfigEnum.DATABASE],
+                new_config[ConfigEnum.MODE], timeout / 60))
+            new_rpc = RPC(**new_config)
+            new_rpc.odoo.config['auto_context'] = not no_context
+            Print.success('Connected to host %s:%s, database=%s, version=%s, mode=%s, timeout=%smin' % (
+                new_config[ConfigEnum.HOST], new_config[ConfigEnum.PORT], new_config[ConfigEnum.DATABASE],
+                new_rpc.version, new_config[ConfigEnum.MODE], timeout / 60))
+            ctx.obj['version'] = int(
+                ''.join([x for x in new_rpc.version.strip() if x.isdigit() or x == '.']).split('.')[0])
+            new_rpc = RPC(**new_config)
+            if login:
+                Print.info('Try to login to the database %s as %s' % (
+                    new_config[ConfigEnum.DATABASE], new_config[ConfigEnum.USER]))
+                new_rpc.login()
+                Print.success('Connected to the database %s as %s' % (
+                    new_config[ConfigEnum.DATABASE], new_config[ConfigEnum.USER]))
+        except:
+            Print.error('Cannot connect to the database %s as %s' % (
+                new_config[ConfigEnum.DATABASE], new_config[ConfigEnum.USER]))
+            new_rpc = False
+        return new_rpc
+
+    def update_list():
+        global odoo
+        if odoo:
+            Print.info('Updating the list of modules ...')
+            odoo.env['ir.module.module'].update_list()
+
+    ctx.obj['config_obj'] = yaml_obj
+    ctx.obj['configs'] = configs
+    ctx.obj['current_config'] = current_config
+    ctx.obj['action_connect'] = action_connect
+    ctx.obj['action_login'] = action_login
+    ctx.obj['update_list'] = update_list
+    ctx.obj['new_rpc'] = new_rpc
+    ctx.obj['rpc'] = rpc
+    ctx.obj['yes'] = yes
+    ctx.obj['no_context'] = no_context
+    ctx.obj['debug'] = debug
+
+
+######################################################################
+###
+###                   CONFIGURATIONS OPERATIONS
+###
+#######################################################################
+def __list_configurations(ctx, grep=False, index=False):
+    configs = ctx.obj['configs']
+    data = Data(configs)
+    tbl = data.get_pretty_table(add_index=True, grep=grep, index=index)
+    Print.info(tbl, header="List of configurations", total=len(tbl._rows))
+
+
+@cli_rpc.command('create')
+@click.argument('name')
+@click.pass_context
+def __create_config(ctx, name):
+    """Create a new configuration"""
+    configs = ctx.obj['configs']
+    current_config = ctx.obj['current_config']
+    if name in configs:
+        if not click.confirm('The name [{}] is already exists ! continue to update ?'.format(name)):
+            ctx.abort()
+    host = click.prompt(ConfigEnum.HOST, default=current_config[ConfigEnum.HOST], type=str)
+    port = click.prompt(ConfigEnum.PORT, default=current_config[ConfigEnum.PORT], type=int)
+    database = click.prompt(ConfigEnum.DATABASE, default=current_config[ConfigEnum.DATABASE], type=str)
+    user = click.prompt(ConfigEnum.USER, default=current_config[ConfigEnum.USER], type=str)
+    password = click.prompt(ConfigEnum.PASSWORD, default=current_config[ConfigEnum.PASSWORD], type=str)
+    superadminpassword = click.prompt(ConfigEnum.SUPERADMINPASSWORD,
+                                      default=current_config[ConfigEnum.SUPERADMINPASSWORD], type=str)
+    protocol = click.prompt(ConfigEnum.PROTOCOL, default=current_config[ConfigEnum.PROTOCOL], type=str)
+    mode = click.prompt(ConfigEnum.MODE, default=current_config[ConfigEnum.MODE], type=str)
+    data = DEFAULT_CONFIG.copy()
+    data.update(dict(
+        host=host,
+        port=port,
+        database=database,
+        user=user,
+        password=password,
+        superadminpassword=superadminpassword,
+        protocol=protocol,
+        mode=mode))
+    ctx.obj['config_obj'].add(name, **data)
+    ctx.obj['config_obj'].switch(name, 'default', True, False)
+    ctx.obj['config_obj'].dump()
+
+
+@cli_rpc.command('list')
+@click.argument('grep', required=False)
+@click.pass_context
+def __list(ctx, grep):
+    """List of configurations"""
+    __list_configurations(ctx, grep)
+
+
+@cli_rpc.command('which')
+@click.pass_context
+def __which(ctx):
+    """Which configuration is current"""
+    Data(ctx.obj['current_config']).show()
+
+
+@cli_rpc.command('use')
+@click.argument('grep', required=False)
+@click.pass_context
+def __use(ctx, grep):
+    """List of configurations"""
+    configs = ctx.obj['configs']
+    data = Data(configs)
+    __list_configurations(ctx, grep)
+    if not grep:
+        grep = click.prompt('Enter the name or the index of a configuration to use')
+    name = index = False
+    for i, item in enumerate(data.get_lines(), 1):
+        if grep:
+            if isinstance(grep, basestring) and grep.strip().isdigit() and int(grep) == i:
+                name = item[0]
+                index = i
+            if item[0] == grep:
+                name = item[0]
+                index = i
+    if not name:
+        Print.error('please retry with an other grep !')
+    ctx.obj['config_obj'].switch(name, ConfigEnum.DEFAULT, True, False)
+    ctx.obj['config_obj'].dump()
+    __list_configurations(ctx, False, index=index)
+
+
+@cli_rpc.command('delete')
+@click.argument('grep', required=False)
+@click.pass_context
+def __delete(ctx, grep):
+    """Delete a configuration"""
+    configs = ctx.obj['configs']
+    data = Data(configs)
+    __list_configurations(ctx, grep)
+    if not grep:
+        grep = click.prompt('Enter the name or the index of a configuration to delete')
+    name = index = False
+    for i, item in enumerate(data.get_lines(), 1):
+        if grep:
+            if isinstance(grep, basestring) and grep.strip().isdigit() and int(grep) == i:
+                name = item[0]
+                index = i
+            if item[0] == grep:
+                name = item[0]
+                index = i
+    if not name:
+        Print.error('please retry with an other grep !')
+    click.confirm('Are you sure you want to delete the configuration [{}]'.format(name), abort=True)
+    ctx.obj['config_obj'].delete(name=name)
+    ctx.obj['config_obj'].dump()
+    __list_configurations(ctx, False, index=index)
+
+
+@cli_rpc.command('login')
+@click.argument('user', required=False)
+@click.argument('password', required=False)
+@click.pass_context
+def __login(ctx, user, password):
+    """Login to the database"""
+    if user:
+        ctx.obj['current_config'].update(dict(user=user))
+    if password:
+        ctx.obj['current_config'].update(dict(password=password))
+    ctx.obj['action_login']()
+
+
+@cli_rpc.command('connect')
+@click.argument('host', required=False)
+@click.argument('port', required=False)
+@click.pass_context
+def __connect(ctx, host, port):
+    """Connect to the server"""
+    if host:
+        ctx.obj['current_config'].update(dict(host=host))
+    if port:
+        ctx.obj['current_config'].update(dict(port=port))
+    ctx.obj['action_connect']()
+
+
+######################################################################
+###
+###               DATABASE AND SERVER OPERATIONS
+###
+#######################################################################
+
+@cli_rpc.command('db_list')
+@click.pass_context
+def __db_list(ctx):
+    """Liste databases"""
+    ctx.obj['action_connect']().list_db()
+
+
+@cli_rpc.command('ping')
+@click.option('--login/--no-login', default=False, required=False)
+@click.pass_context
+def __db_ping(ctx, login):
+    """Ping"""
+    configs = ctx.obj['configs']
+
+    def _check(config_name, config_values):
+        ok = False
+        try:
+            rpc = ctx.obj['new_rpc'](config_name, login=login)
+            ok = rpc and True or False
+        except:
+            pass
+        server = _config_to_server(config_values)
+        config_values.update(dict(connected=ok, server=server))
+
+    threads = []
+    for k, v in configs.items():
+        t = Thread(target=_check, args=(k, v))
+        t.start()
+        threads.append(t)
+    [t.join() for t in threads]
+    Data(configs, header=['name', 'connected', 'server'], name='name').show()
+
+
+@cli_rpc.command('db_dump')
+@click.argument('destination', type=click.STRING, required=True)
+@click.option('--drop/--no-drop', default=False, required=False)
+@click.option('--zip/--no-zip', default=True, required=False)
+@click.pass_context
+def __db_dump(ctx, destination, drop, zip):
+    """Backup a database"""
+    configs = ctx.obj['configs']
+    rpc = ctx.obj['action_connect']()
+    assert destination in configs or os.path.isdir(destination), 'The destination [{}] is not found'.format(destination)
+    if destination in configs:
+        destination_rpc = ctx.obj['new_rpc'](destination)
+        with Path.tempdir() as tmp:
+            path = rpc.dump_db(dest=tmp)
+            destination_rpc.restore_db(path, drop=drop)
+    else:
+        rpc.restore_db(destination, drop=drop)
+
+
+@cli_rpc.command('db_restore')
+@click.argument('source', type=click.STRING, required=True)
+@click.option('--drop/--no-drop', default=False, required=False)
+@click.pass_context
+def __db_restore(ctx, source, drop):
+    """Restore a database"""
+    configs = ctx.obj['configs']
+    rpc = ctx.obj['action_connect']()
+    assert source in configs or os.path.isfile(source), 'The source [{}] is not found'.format(source)
+    if source in configs:
+        source_rpc = ctx.obj['new_rpc'](source)
+        with Path.tempdir() as tmp:
+            path = source_rpc.dump_db(dest=tmp)
+            rpc.restore_db(path, drop=drop)
+    else:
+        rpc.restore_db(source, drop=drop)
+
+
+@cli_rpc.command('db_drop')
+@click.argument('grep', nargs=-1, required=True)
+@click.pass_context
+def __db_drop(ctx, grep):
+    """Drop a databases"""
+    yes = ctx.obj['yes']
+    databases = Operator.unique(Operator.split_and_flat(',', grep))
+    if yes or click.confirm('Are you sure you want to delete the databases : {}'.format(databases)):
+        for db_name in databases:
+            ctx.obj['action_connect']().drop_db(db_name)
+
+
+######################################################################
+###
+###                   MODULES MANAGEMENT
+###
+#######################################################################
+
+@cli_rpc.command('install')
+@click.argument('addons', type=click.STRING, nargs=-1, required=False)
+@click.pass_context
+def __module_install(ctx, addons):
+    """Install modules"""
+    addons = Operator.split_and_flat(',', addons)
+    rpc = ctx.obj['action_login']()
+    rpc.install(addons)
+
+
+@cli_rpc.command('upgrade')
+@click.argument('addons', type=click.STRING, nargs=-1, required=False)
+@click.pass_context
+def __module_upgrade(ctx, addons):
+    """Upgrades modules"""
+    addons = Operator.split_and_flat(',', addons)
+    rpc = ctx.obj['action_login']()
+    rpc.upgrade(addons)
+
+
+@cli_rpc.command('uninstall')
+@click.argument('addons', type=click.STRING, nargs=-1, required=False)
+@click.pass_context
+def __module_uninstall(ctx, addons):
+    """Uninstall modules"""
+    addons = Operator.split_and_flat(',', addons)
+    rpc = ctx.obj['action_login']()
+    rpc.uninstall(addons)
+
+
+@cli_rpc.command('update_list')
+@click.pass_context
+def __module_update_list(ctx):
+    """Update module's list """
+    rpc = ctx.obj['action_login']()
+    rpc.update_list()
+
+
+######################################################################
+###
+###                   DATA OPERATIONS
+###
+#######################################################################
+
+@cli_rpc.command('param')
+@click.argument('key', default=None, required=False)
+@click.argument('value', default=None, required=False)
+@click.pass_context
+def __params(ctx, key, value):
+    """Manage parameters"""
+    rpc = ctx.obj['action_login']()
+    fields = ['id', 'key', 'value']
+    domain = []
+    result = None
+    if key:
+        result = rpc.get_param(key)
+    if value is not None:
+        result = rpc.set_param(key, value)
+    if result is None:
+        data = Data(rpc.read('ir.config_parameter', domain=domain, fields=fields), header=fields)
+        Print.info(data.get_pretty_table())
+    else:
+        Print.info('[{} => {}]'.format(key, result))
+
+
+@cli_rpc.command('data')
+@click.argument('model', default=None, required=True)
+@click.option('domain', '-d', type=click.STRING, default='', help="Domain")
+@click.option('limit', '-l', type=click.INT, default=0, help="Limit")
+@click.option('order', '-o', type=click.STRING, default='', help="Order")
+@click.option('fields', '-f', multiple=True, type=click.STRING, default='', help="Fields to show")
+@click.pass_context
+def __data(ctx, model, domain, limit, order, fields):
+    """Show the data"""
+    fields = Operator.split_and_flat(',', fields) if fields else ['id', 'name']
+    rpc = ctx.obj['action_login']()
+    kwargs = dict(domain=domain, fields=fields)
+    if limit: kwargs.update(dict(limit=limit))
+    if order: kwargs.update(dict(order=order))
+    Data(rpc.read(model, **kwargs), header=fields).show()
+
+
+@cli_rpc.command('count')
+@click.argument('model', default=None, required=True)
+@click.option('domain', '-d', type=click.STRING, default='', help="Domain")
+@click.pass_context
+def __count(ctx, model, domain):
+    """Count the records"""
+    rpc = ctx.obj['action_login']()
+    domain = Tool.contruct_domain_from_str(domain)
+    Data([[rpc[model].search(domain, count=True)]], header=['Count']).show(header='Count of records')
+
+
+@cli_rpc.command('func')
+@click.argument('model', default=None, required=True)
+@click.argument('func', default=None, required=True)
+@click.argument('args', nargs=-1, required=False)
+@click.option('--arg', '-a', type=click.STRING, nargs=2, multiple=True, help="Key value")
+@click.option('--ids', '-id', type=click.STRING, nargs=1, multiple=True, help="Pass IDS")
+@click.pass_context
+def __func(ctx, model, func, args, arg, ids):
+    """Execute a function"""
+    args = Eval(Operator.split_and_flat(',', ids)).eval() + Eval(args).eval()
+    rpc = ctx.obj['action_login']()
+    res = getattr(rpc[model], func)(*args, **dict(Eval(arg).eval()))
+    Print.info('Result : {}'.format(pformat(res)))
+
+
+@cli_rpc.command('fields')
+@click.argument('model', default=None, required=True)
+@click.option('--fields', '-f', multiple=True, type=click.STRING, default='', help="Fields to show")
+@click.option('--grep', '-g', type=click.STRING, default=False, help="Grep the result")
+@click.pass_context
+def __fields(ctx, model, fields, grep):
+    """Fields of a model"""
+    rpc = ctx.obj['action_login']()
+    fields = ['name', 'type'] + Operator.split_and_flat(',', fields)
+    Data(rpc.env[model].fields_get(), header=fields, name='name').show(grep=grep)
+
+
+@cli_rpc.command('menus')
+@click.option('--debug/--no-debug', default=False, required=False)
+@click.option('--xmlid/--no-xmlid', default=False, required=False)
+@click.option('--action/--no-action', default=False, required=False)
+@click.pass_context
+def __menus(ctx, debug, xmlid, action):
+    """SHow menus"""
+    rpc = ctx.obj['action_login']()
+    rpc.menus(debug=debug, xmlid=xmlid, action=action)
+
+
+######################################################################
+###
+###                   VIEWS & QWEB OPERATIONS
+###
+#######################################################################
+
+
+@cli_rpc.command('find')
+@click.argument('expr', type=click.STRING, required=True)
+@click.option('--model', '-m', type=click.STRING, required=False, multiple=True)
+@click.option('--type', '-t', type=click.STRING, required=False, multiple=True)
+@click.pass_context
+def __find(ctx, expr, model, type):
+    """Searching for the expression in the views"""
+    rpc = ctx.obj['action_login']()
+    domain = [('arch_db', 'ilike', expr)]
+    if model:
+        domain.append(('model', 'in', model), )
+    if type:
+        domain.append(('type', 'in', type), )
+    Print.info('Domain : {}'.format(pformat(domain)))
+    Data(rpc.get_ir_ui_view(domain), header=["id", "name", "type", "model", "xml_id", "mode"]).show()
+
+
+@cli_rpc.command('arch')
+@click.argument('view', type=click.STRING, required=True)
+@click.pass_context
+def __arch(ctx, view):
+    """Cat the arch of the view"""
+    rpc = ctx.obj['action_login']()
+    if view.isdigit():
+        view = rpc.get_ir_ui_view([('id', '=', int(view))])
+    else:
+        view = rpc.xmlid_to_object(view)
+    Print.info(XML.SEPARATOR)
+    Print.info(XML(view.arch).pretty())
+    Print.info(XML.SEPARATOR)
+
+
+@cli_rpc.command('combined')
+@click.argument('view', type=click.STRING, required=True)
+@click.pass_context
+def __combined(ctx, view):
+    """Combined view architecture"""
+    rpc = ctx.obj['action_login']()
+    if view.isdigit():
+        view = rpc.get_ir_ui_view([('id', '=', int(view))])
+    else:
+        view = rpc.xmlid_to_object(view)
+    xml = view.read_combined(['arch'])['arch']
+    Print.info(XML.SEPARATOR)
+    Print.info(XML(xml).pretty())
+    Print.info(XML.SEPARATOR)
+
+
+######################################################################
+###
+###                   SHELL MODE
+###
+#######################################################################
+
+def raise_keyboard_interrupt(*a):
+    raise KeyboardInterrupt()
+
+
+class Console(code.InteractiveConsole):
+    def __init__(self, locals=None, filename="<console>"):
+        code.InteractiveConsole.__init__(self, locals, filename)
+        try:
+            import readline
+            import rlcompleter
+        except ImportError:
+            print('readline or rlcompleter not available, autocomplete disabled.')
+        else:
+            readline.set_completer(rlcompleter.Completer(locals).complete)
+            readline.parse_and_bind("tab: complete")
+
+
+class Shell(object):
+    def init(self):
+        signal.signal(signal.SIGINT, raise_keyboard_interrupt)
+
+    def console(self, local_vars):
+        if not os.isatty(sys.stdin.fileno()):
+            exec(sys.stdin, local_vars)
+        else:
+            Console(locals=local_vars).interact()
+
+
+@cli_rpc.command()
+@click.pass_context
+def shell(ctx):
+    """Shell mode"""
+    rpc = ctx.obj['action_login']()
+    env = rpc.env
+    Shell().console(locals())
+
+
+######################################################################
+###
+###                 XMLID AND METADATA
+###
+#######################################################################
+
+
+@cli_rpc.command('xmlid')
+@click.argument('xmlid', type=click.STRING, required=True)
+@click.option('--fields', '-f', multiple=True, type=click.STRING, default='', help="Fields to show")
+@click.pass_context
+def __xmlid(ctx, xmlid, fields):
+    """Combined view architecture"""
+    fields = Operator.split_and_flat(',', fields)
+    rpc = ctx.obj['action_login']()
+    view = rpc.xmlid_to_object(xmlid)
+    Data({'model': view._name, 'id': view.id}).show()
+    if fields:
+        Data(view, header=fields).show()
+
+
+@cli_rpc.command('metadata')
+@click.argument('model', type=click.STRING, required=True)
+@click.argument('id_', metavar='ID', type=click.INT, required=True)
+@click.pass_context
+def __metadata(ctx, model, id_):
+    """Show metadata"""
+    rpc = ctx.obj['action_login']()
+    record = rpc[model].browse(id_)
+    Data(record.get_metadata()).show()
+
+
+######################################################################
+###
+###                 LOAD YAMLS MANAGEMENTS
+###
+#######################################################################
+
+@cli_rpc.command('load')
+@click.argument('datas', type=click.STRING, required=True, nargs=-1, )
+@click.option('--assets', '-a',
+              type=click.Path(
+                  exists=True,
+                  file_okay=False,
+                  dir_okay=True,
+                  readable=True,
+                  resolve_path=True
+              ), default=os.getcwd(), help="Path of the assets")
+@click.option('--start', type=click.INT, help="Start index")
+@click.option('--stop', type=click.INT, help="Stop index")
+@click.pass_context
+def __load(ctx, datas, assets, start, stop):
+    """Process yaml files"""
+    rpc = ctx.obj['action_login']()
+    rpc.load_yaml(path=datas, assets=assets, start=start, stop=stop, auto_commit=False)

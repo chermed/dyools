@@ -36,6 +36,20 @@ class TestOperator(TestCase):
         self.assertEqual(Operator.unique(['id', 'id', 'key', 'value']), ['id', 'key', 'value'])
         self.assertEqual(Operator.unique(['id', 'id']), ['id'])
 
+    def test_intersection(self):
+        from dyools import Operator
+        self.assertEqual(Operator.intersection([1, 2, 3]), [1, 2, 3])
+        self.assertEqual(Operator.intersection([], [1, 2, 3]), [])
+        self.assertEqual(Operator.intersection([1, 2, 3], []), [])
+        self.assertEqual(Operator.intersection([1, 2, 3], [3]), [3])
+        self.assertEqual(Operator.intersection([1, 2, 3], [3, 2]), [2, 3])
+        self.assertEqual(Operator.intersection([1, 2, 3], [3, 2], [2, 3], [3]), [3])
+        self.assertEqual(Operator.intersection([0, 1, 2, 3, 0], [0, 3, 2, 0]), [0, 2, 3, 0])
+        self.assertEqual(Operator.intersection(['id', 'name', 'id'], ['id', 'name']), ['id', 'name', 'id'])
+        self.assertEqual(Operator.intersection(['id', 'key', 'value'], ['id']), ['id'])
+        self.assertEqual(Operator.intersection(['id'], ['id', 'key', 'value']), ['id'])
+        self.assertEqual(Operator.intersection(['id'], ['id', 'key', 'value'], ['A', 'id'], ['id']), ['id'])
+
     def test_unique_intersection(self):
         from dyools import Operator
         self.assertEqual(Operator.unique_intersection([], [1, 2, 3]), [])

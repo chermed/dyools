@@ -82,7 +82,7 @@ class IS(object):
             return False
         if not item:
             return True
-        if isinstance(item[0], list):
+        if isinstance(item[0], (dict, list)):
             return False
         return True
 

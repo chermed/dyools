@@ -1,19 +1,26 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import base64
 import importlib
 import logging
 import os
+from datetime import datetime, date
 from functools import partial
 
 import odoorpc
+import yaml
+from dateutil.parser import parse as dtparse
+from lxml import etree
 from past.builtins import basestring
 from prettytable import PrettyTable
 
+from .klass_eval import Eval
 from .klass_is import IS
 from .klass_path import Path
 from .klass_tool import Tool
 
 logger = logging.getLogger(__name__)
+DATE_FORMAT, DATETIME_FORMAT = "%Y-%m-%d", "%Y-%m-%d %H:%M:%S"
 
 
 class Mixin(object):
@@ -183,6 +190,15 @@ class Mixin(object):
             xmlid_obj = xmlid_env.browse(xmlid_obj)
         return xmlid_obj.complete_name
 
+    def xmlid_to_object(self, xmlid):
+        self._require_env()
+        assert IS.xmlid(xmlid), 'The keyword [{}] sould be a valid XMLID'.format(xmlid)
+        module, name = xmlid.split('.')
+        xmlid_env = self.env['ir.model.data']
+        xmlid_obj = xmlid_env.search([('module', '=', module), ('name', '=', name)], limit=1)
+        xmlid_obj = self.to_obj('ir.model.data', xmlid_obj)
+        return self.env[xmlid_obj.model].browse(xmlid_obj.res_id)
+
     def config(self, **kwargs):
         model = 'res.config.settings'
         res = self.env[model].create(kwargs)
@@ -210,6 +226,7 @@ class Mixin(object):
         self._require_env()
         if isinstance(addons, basestring):
             addons = addons.split()
+        self.update_list()
         addons = self.env['ir.module.module'].search([('name', 'in', addons)])
         addons = self.to_obj('ir.module.module', addons)
         addons_names = addons.mapped('name')
@@ -224,6 +241,9 @@ class Mixin(object):
         elif op == 'uninstall':
             addons.module_uninstall()
         self.show(addons, fields=['name', 'state'], title="modules after")
+
+    def update_list(self):
+        self.env['ir.module.module'].update_list()
 
     def install(self, addons):
         self._process_addons_op(addons, 'install')
@@ -299,6 +319,251 @@ class Mixin(object):
         for line in lines:
             print(line)
 
+    def _process_python(self, script, context, assets):
+        res = exec(script, context)
+        if isinstance(res, dict):
+            context.update(res)
+
+    def _normalize_value_for_field(self, model, field, value, assets):
+        values = {}
+        ffield = self.env[model].fields_get()[field]
+        ttype, relation, selection = ffield['type'], ffield.get('relation'), ffield.get('selection', [])
+        if ttype == 'boolean':
+            value = bool(value)
+        elif ttype in ['text', 'float', 'char', 'integer', 'monetary', 'html']:
+            pass
+        elif ttype == 'date':
+            if isinstance(value, date):
+                value = value.strftime(DATE_FORMAT)
+            else:
+                value = dtparse(str(value), dayfirst=True, fuzzy=True).strftime(DATE_FORMAT)
+        elif ttype == 'datetime':
+            if isinstance(value, datetime):
+                value = value.strftime(DATETIME_FORMAT)
+            else:
+                value = dtparse(str(value), dayfirst=True, fuzzy=True).strftime(DATETIME_FORMAT)
+        elif ttype == 'selection':
+            for k, v in selection:
+                if k == value or v == value:
+                    value = k
+                    break
+        if ttype == 'binary':
+            if assets:
+                value = os.path.join(assets, value)
+            with open(value, "rb") as binary_file:
+                value = base64.b64encode(binary_file.read())
+        if ttype in ['many2one', 'many2many', 'one2many']:
+            ids = None
+            if value == '__all__':
+                ids = self.env[relation].search([]).ids
+            elif value == '__first__':
+                ids = self.env[relation].search([], limit=1, order="id asc").ids
+            elif value == '__last__':
+                ids = self.env[relation].search([], limit=1, order="id desc").ids
+            elif isinstance(value, list) and IS.domain(value):
+                ids = self.env[relation].search(value).ids
+            elif isinstance(value, int):
+                ids = [value]
+            elif isinstance(value, basestring):
+                if IS.xmlid(value):
+                    ids = self.env.ref(value).ids
+                else:
+                    ids = self.env[relation].search([('name', '=', value)]).ids
+            if ttype == 'many2one':
+                value = value if not ids else ids[0]
+            elif ttype == 'many2many':
+                value = value if ids is None else [(6, 0, ids)]
+        values[field] = value
+        return values
+
+    def _onchange_spec(model, view_info=None):
+        result = {}
+        onchanges = []
+        view_fields = []
+
+        def process(node, info, prefix):
+            if node.tag == 'field':
+                name = node.attrib['name']
+                names = "%s.%s" % (prefix, name) if prefix else name
+                view_fields.append(name)
+                if not result.get(names):
+                    result[names] = node.attrib.get('on_change')
+                    if node.attrib.get('on_change'):
+                        onchanges.append(name)
+                # traverse the subviews included in relational fields
+                for subinfo in info['fields'][name].get('views', {}).itervalues():
+                    process(etree.fromstring(subinfo['arch']), subinfo, names)
+            else:
+                for child in node:
+                    process(child, info, prefix)
+
+        if view_info is None:
+            view_info = model.fields_view_get()
+        process(etree.fromstring(view_info['arch']), view_info, '')
+        return result, onchanges, view_fields
+    
+    def _normalize_record_data(self, model, data, context, assets):
+        record_data = {}
+        model_env = self.env[model]
+        onchange_specs = model_env._onchange_spec()
+        import pdb; pdb.set_trace() #TODO remove me 
+        for item in data:
+            item = Eval(item, context).eval()
+            for field, value in item.items():
+                values = self._normalize_value_for_field(model, field, value, assets)
+                record_data.update(values)
+                onchange_values = model_env.onchange(record_data, field, onchange_specs)
+                for k, v in onchange_values.get('value', {}).items():
+                    if isinstance(v, (list, tuple)) and len(v) == 2:
+                        v = v[0]
+                    record_data[k] = v
+        return record_data
+
+    def _process_config(self, value):
+        return self.env['res.config.settings'].create(value).execute()
+
+    def _process_record(self, data, context, assets):
+        records = self.env[data['model']]
+        refs = data.get('refs')
+        record_data = data.get('data')
+        record_functions = data.get('functions', [])
+        record_export = data.get('export')
+        record_filter = data.get('filter')
+        record_ctx = data.get('context', {})
+        if context.get('__global_context__'):
+            record_ctx.update(context.get('__global_context__'))
+        if refs:
+            if isinstance(refs, int):
+                records = records.browse(refs)
+            elif IS.xmlid(refs):
+                records = records.env.ref(refs, raise_if_not_found=False) or records
+            elif isinstance(refs, basestring):
+                records = records.search([('name', '=', refs)])
+            elif isinstance(refs, list):
+                refs = Eval(refs, context).eval()
+                records = records.search(refs)
+            records = records.exists()
+            if record_filter:
+                if len(records) > 0:
+                    print(['&', ('id', 'in', records.ids)] + record_filter)
+                    records = records.search(['&', ('id', 'in', records.ids)] + record_filter)
+                    if not records:
+                        return False
+        if record_ctx:
+            records = records.with_context(**record_ctx)
+        if record_data:
+            assert isinstance(record_data, list), "The data [%s] should be a list" % record_data
+            record_data = self._normalize_record_data(records._name, record_data, context, assets)
+            if len(records) > 0:
+                records.write(record_data)
+            else:
+                records = records.create(record_data)
+                if isinstance(refs, basestring) and IS.xmlid(refs):
+                    self.update_xmlid(records, xmlid=refs)
+        if record_export:
+            context[record_export] = records
+        context['%s_record' % records._name.replace('.', '_')] = records
+        for function in record_functions:
+            func_name = function['name']
+            func_args = function['args'] if function.get('args') else []
+            func_kwargs = function['kwargs'] if function.get('kwargs') else {}
+            assert isinstance(func_args, list), "Args [%s] should be a list" % func_args
+            assert isinstance(func_kwargs, dict), "Kwargs [%s] should be a dict" % func_kwargs
+            func_res = getattr(records, func_name)(*func_args, **func_kwargs)
+            func_export = function.get('export')
+            if func_export:
+                context[func_export] = func_res
+            context['%s_%s' % (records._name.replace('.', '_'), func_name)] = func_res
+
+    def _process_yaml_doc(self, index, doc, context, assets):
+        for key, value in doc.items():
+            if key == 'python':
+                print("[%s] ***** Execute python *****" % index)
+                self._process_python(value, context, assets)
+            elif key == 'record':
+                print("[%s] ***** Process record *****" % index)
+                self._process_record(value, context, assets)
+            elif key == 'title':
+                value = Eval(value, context).eval()
+                print("[%s] ***** %s *****" % (index, value))
+            elif key == 'context':
+                value = Eval(value, context).eval()
+                context['__global_context__'].update(value)
+                print("[%s] ***** Add global context *****" % index)
+            elif key == 'install':
+                print("[%s] ***** Install modules *****" % index)
+                self.install(value)
+            elif key == 'upgrade':
+                print("[%s] ***** Upgrade modules *****" % index)
+                self.upgrade(value)
+            elif key == 'uninstall':
+                print("[%s] ***** Uninstall modules *****" % index)
+                self.uninstall(value)
+            elif key == 'config':
+                print("[%s] ***** Configuration *****" % index)
+                self._process_config(value)
+
+    def load_yaml(self, path, assets=False, start=False, stop=False, auto_commit=False):
+        def __add_file(f):
+            fname, ext = os.path.splitext(f)
+            if ext.strip().lower() not in ['.yaml', '.yml']:
+                return
+            fname = os.path.basename(fname)
+            idx = False
+            try:
+                idx = int(fname.split('-')[0].strip())
+            except:
+                pass
+            if idx and (start or stop):
+                if start and idx < start: return
+                if stop and idx > stop: return
+            files.append(f)
+
+        self._require_env()
+        assert not assets or os.path.exists(assets), "The path [%s] should exists" % assets
+        files = []
+        if isinstance(path, basestring):
+            paths = [path]
+        else:
+            paths = path
+            for path in paths:
+                assert os.path.exists(path), "The path [%s] should exists" % path
+        for path in paths:
+            if os.path.isdir(path):
+                for dirpath, _, filenames in os.walk(path):
+                    for filename in filenames:
+                        __add_file(os.path.join(dirpath, filename))
+            elif os.path.isfile(path):
+                __add_file(path)
+        print('[%s] Files to process : ' % len(files))
+        for file in files:
+            print("  - %s" % file)
+        contents = ""
+        files = sorted(files, key=lambda item: os.path.basename(item.lower().strip()))
+        for file in files:
+            with open(file) as f:
+                contents += "\n\n---\n\n"
+                contents += f.read()
+        with Path.tempdir() as tmpdir:
+            full_yaml_path = os.path.join(tmpdir, 'full_yaml.yml')
+            with open(full_yaml_path, 'w+') as f:
+                f.write(contents)
+            context = {
+                'self': self.env,
+                'env': self.env,
+                'user': self.env.user,
+                '__global_context__': {},
+            }
+            index = 0
+            for doc in yaml.load_all(open(full_yaml_path)):
+                if doc:
+                    index += 1
+                    self._process_yaml_doc(index, doc, context, assets)
+                    if auto_commit:
+                        self.commit()
+        if '__builtins__' in context: del context['__builtins__']
+        return context
+
     def __getitem__(self, item):
         self._require_env()
         return self.env[item]
@@ -326,16 +591,10 @@ class Mixin(object):
             model = False
             if _item in mapping.keys():
                 model = mapping[_item]
-            elif _item.endswith('ies'):
-                _item = _item[:-3] + 'y'
-            elif _item.endswith('s'):
-                _item = _item[:-1]
-            if _item in mapping.keys():
-                model = mapping[_item]
             model = model or _item.replace('_', '.')
             if model:
                 return partial(self.get, model)
-        return super(Mixin, self).__getattr__(item)
+        return self.env
 
     def __lshift__(self, other):
         assert isinstance(other, Mixin), "Backup and restore work for environnements"

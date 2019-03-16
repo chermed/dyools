@@ -1,7 +1,7 @@
 from prettytable import PrettyTable
 
-from .klass_operator import Operator
 from .klass_is import IS
+from .klass_operator import Operator
 from .klass_print import Print
 from .klass_str import Str
 
@@ -19,6 +19,8 @@ class Data(object):
             data = []
         lines = []
         in_header = header[::]
+        if header and IS.list_of_values(header) and IS.list_of_values(data) and len(data) > len(header):
+            data = [[x] for x in data]
         if IS.dict_of_dict(data):
             origin = data.copy()
             header = [self.name]
@@ -71,6 +73,10 @@ class Data(object):
                 lines = []
             else:
                 lines = [origin]
+        else:
+            lines = []
+            for item in data:
+                lines.append([getattr(item, h, None) for h in header])
         return header, lines
 
     def get_lines(self):
@@ -136,5 +142,11 @@ class Data(object):
                 res.append({k: v for k, v in zip(header, line)})
         return res
 
-    def show(self, pretty=True, add_index=False, grep=False, index=False):
-        Print.info(self.get_pretty_table(pretty=pretty, add_index=add_index, grep=grep, index=index))
+    def show(self, pretty=True, add_index=False, grep=False, index=False, header=False, footer=False, exit=False):
+        Print.info(
+            self.get_pretty_table(
+                pretty=pretty,
+                add_index=add_index,
+                grep=grep,
+                index=index),
+            header=header, footer=footer, exit=exit)
