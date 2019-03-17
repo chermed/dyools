@@ -61,6 +61,18 @@ class TestIS(TestCase):
         self.assertFalse(IS.iterable('abcdefgh'))
         self.assertFalse(IS.iterable(1234))
 
+    def test_is_eval(self):
+        from dyools import IS
+        self.assertFalse(IS.eval([]))
+        self.assertFalse(IS.eval([1, 2, 3, 4]))
+        self.assertFalse(IS.eval(()))
+        self.assertFalse(IS.eval({}))
+        self.assertFalse(IS.eval(False))
+        self.assertFalse(IS.eval(None))
+        self.assertFalse(IS.eval('', {'a': 1}))
+        self.assertFalse(IS.eval('{b}', {'a': 1}))
+        self.assertTrue(IS.eval('{a}', {'a': 1}))
+
     def test_is_list_of_values(self):
         from dyools import IS
         self.assertTrue(IS.list_of_values([]))

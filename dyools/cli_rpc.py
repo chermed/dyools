@@ -61,9 +61,21 @@ def _config_to_server(config):
     return fmt.format(schema=schema, **config)
 
 
-def _check_production(ctx, config):
+def _check_production(config):
     if config.get(ConfigEnum.MODE, ConfigEnum.PRODUCTION) == ConfigEnum.PRODUCTION:
         click.confirm('Production environment, do you want to continue?', abort=True)
+
+
+def fmt_login(config):
+    fmt = 'database={database} as {user} mode={mode}'
+    return fmt.format(**config)
+
+
+def fmt_connect(config):
+    fmt = '{host}:{port}, database={database} mode={mode}'
+    if 'timeout_min' in config:
+        fmt += ' timeout={timeout_min} min'
+    return fmt.format(**config)
 
 
 @click.group()
@@ -85,7 +97,7 @@ def _check_production(ctx, config):
 @click.option('--superadminpassword', '-s', type=click.STRING, default=None, help="Super admin password")
 @click.option('--protocol', type=click.Choice(ConfigEnum.PROTOCOLS), default=None, help="Protocol")
 @click.option('--mode', '-m', type=click.Choice(ConfigEnum.MODES), default=None, help="Mode")
-@click.option('--timeout', '-t', type=click.INT, default=60, help="Timeout in minutes")
+@click.option('--timeout', '-t', type=click.INT, default=10, help="Timeout in minutes")
 @click.option('--yes', is_flag=True, default=False)
 @click.option('--no-context', is_flag=True, default=False)
 @click.option('--debug', is_flag=True, default=False)
@@ -118,28 +130,19 @@ def cli_rpc(ctx, database, host, port, user, password, superadminpassword, proto
         current_config[ConfigEnum.PROTOCOL] = protocol
     if mode is not None:
         current_config[ConfigEnum.MODE] = mode
+    current_config.update(dict(timeout=timeout * 60., timeout_min=timeout))
 
     def action_connect():
         global rpc
-        if ConfigEnum.MODE == ConfigEnum.PRODUCTION:
-            if not yes and not click.confirm('You are in mode production, continue ?'):
-                sys.exit()
+        _check_production(current_config)
         try:
-            Print.info('Try to connect to the host %s:%s, database=%s, mode=%s, timeout=%smin' % (
-                current_config[ConfigEnum.HOST], current_config[ConfigEnum.PORT], current_config[ConfigEnum.DATABASE],
-                current_config[ConfigEnum.MODE], timeout / 60))
+            Print.info('Try to connect to the server {fmt_connect}'.format(fmt_connect=fmt_connect(current_config)))
             rpc = RPC(**current_config)
+            current_config.update(dict(version=rpc.version))
             rpc.odoo.config['auto_context'] = not no_context
-            Print.success(
-                'Connected to host %s:%s, database=%s, version=%s, mode=%s, timeout=%smin' % (
-                    current_config[ConfigEnum.HOST], current_config[ConfigEnum.PORT],
-                    current_config[ConfigEnum.DATABASE], rpc.version, current_config[ConfigEnum.MODE], timeout / 60))
-            ctx.obj['version'] = int(
-                ''.join([x for x in rpc.version.strip() if x.isdigit() or x == '.']).split('.')[0])
+            Print.success('Connected to {fmt_connect}'.format(fmt_connect=fmt_connect(current_config)))
         except:
-            Print.error('Cannot connect to host %s:%s, database=%s, mode=%s' % (
-                current_config[ConfigEnum.HOST], current_config[ConfigEnum.PORT], current_config[ConfigEnum.DATABASE],
-                current_config[ConfigEnum.MODE]))
+            Print.error('Cannot connect to server {fmt_connect}'.format(fmt_connect=fmt_connect(current_config)))
         return rpc
 
     def action_login():
@@ -148,47 +151,36 @@ def cli_rpc(ctx, database, host, port, user, password, superadminpassword, proto
         if rpc:
             rpc = RPC(**current_config)
             try:
-                Print.info('Try to login to the database %s as %s' % (
-                    current_config[ConfigEnum.DATABASE], current_config[ConfigEnum.USER]))
+                Print.info('Try to login to {fmt_login}'.format(fmt_login=fmt_login(current_config)))
                 rpc.login()
-                Print.success('Connected to the database %s as %s' % (
-                    current_config[ConfigEnum.DATABASE], current_config[ConfigEnum.USER]))
+                Print.success('Connected to {fmt_login}'.format(fmt_login=fmt_login(current_config)))
             except:
-                Print.error('Cannot connect to the database %s as %s' % (
-                    current_config[ConfigEnum.DATABASE], current_config[ConfigEnum.USER]))
+                Print.error('Cannot connect to {fmt_login}'.format(fmt_login=fmt_login(current_config)))
         return rpc
 
     def new_rpc(config_name, login=False):
         if config_name not in configs:
             Print.error('The configuration [{%s}] not found'.format(config_name))
         new_config = configs[config_name]
-        new_rpc = False
-        if new_config[ConfigEnum.MODE] == ConfigEnum.PRODUCTION:
-            if not yes and not click.confirm('You are in mode production, continue ?'):
-                sys.exit()
+        _check_production(new_config)
         try:
-            Print.info('Try to connect to the host %s:%s, database=%s, mode=%s, timeout=%smin' % (
-                new_config[ConfigEnum.HOST], new_config[ConfigEnum.PORT], new_config[ConfigEnum.DATABASE],
-                new_config[ConfigEnum.MODE], timeout / 60))
-            new_rpc = RPC(**new_config)
-            new_rpc.odoo.config['auto_context'] = not no_context
-            Print.success('Connected to host %s:%s, database=%s, version=%s, mode=%s, timeout=%smin' % (
-                new_config[ConfigEnum.HOST], new_config[ConfigEnum.PORT], new_config[ConfigEnum.DATABASE],
-                new_rpc.version, new_config[ConfigEnum.MODE], timeout / 60))
-            ctx.obj['version'] = int(
-                ''.join([x for x in new_rpc.version.strip() if x.isdigit() or x == '.']).split('.')[0])
-            new_rpc = RPC(**new_config)
+            Print.info('Try to connect to the server {fmt_connect}'.format(fmt_connect=fmt_connect(current_config)))
+            internal_rpc = RPC(**current_config)
+            current_config.update(dict(version=internal_rpc.version))
+            internal_rpc.odoo.config['auto_context'] = not no_context
+            Print.success('Connected to {fmt_connect}'.format(fmt_connect=fmt_connect(current_config)))
             if login:
-                Print.info('Try to login to the database %s as %s' % (
-                    new_config[ConfigEnum.DATABASE], new_config[ConfigEnum.USER]))
-                new_rpc.login()
-                Print.success('Connected to the database %s as %s' % (
-                    new_config[ConfigEnum.DATABASE], new_config[ConfigEnum.USER]))
+                try:
+                    Print.info('Try to login to {fmt_login}'.format(fmt_login=fmt_login(current_config)))
+                    internal_rpc.login()
+                    Print.success('Connected to {fmt_login}'.format(fmt_login=fmt_login(current_config)))
+                except:
+                    internal_rpc = False
+                    Print.error('Cannot connect to {fmt_login}'.format(fmt_login=fmt_login(current_config)))
         except:
-            Print.error('Cannot connect to the database %s as %s' % (
-                new_config[ConfigEnum.DATABASE], new_config[ConfigEnum.USER]))
-            new_rpc = False
-        return new_rpc
+            internal_rpc = False
+            Print.error('Cannot connect to server {fmt_connect}'.format(fmt_connect=fmt_connect(current_config)))
+        return internal_rpc
 
     def update_list():
         global odoo
@@ -401,7 +393,7 @@ def __db_dump(ctx, destination, drop, zip):
     if destination in configs:
         destination_rpc = ctx.obj['new_rpc'](destination)
         with Path.tempdir() as tmp:
-            path = rpc.dump_db(dest=tmp)
+            path = rpc.dump_db(dest=tmp, zip=zip)
             destination_rpc.restore_db(path, drop=drop)
     else:
         rpc.restore_db(destination, drop=drop)
@@ -426,16 +418,27 @@ def __db_restore(ctx, source, drop):
 
 
 @cli_rpc.command('db_drop')
-@click.argument('grep', nargs=-1, required=True)
+@click.argument('grep', nargs=-1, required=False)
 @click.pass_context
 def __db_drop(ctx, grep):
-    """Drop a databases"""
+    """Drop a database"""
+    rpc = ctx.obj['action_connect']()
+    grep = grep or rpc.dbname
     yes = ctx.obj['yes']
     databases = Operator.unique(Operator.split_and_flat(',', grep))
     if yes or click.confirm('Are you sure you want to delete the databases : {}'.format(databases)):
         for db_name in databases:
-            ctx.obj['action_connect']().drop_db(db_name)
+            rpc.drop_db(db_name)
 
+@cli_rpc.command('db_create')
+@click.argument('database', required=False)
+@click.option('--with-demo', is_flag=True, default=False)
+@click.option('--language', '-l', type=click.STRING, default='fr_FR')
+@click.pass_context
+def __db_create(ctx, database, with_demo, language):
+    """Create a database"""
+    rpc = ctx.obj['action_connect']()
+    rpc.create_db(database or rpc.dbname, with_demo, language)
 
 ######################################################################
 ###

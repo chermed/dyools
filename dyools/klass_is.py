@@ -4,6 +4,8 @@ import re
 
 from past.builtins import basestring
 
+from .klass_eval import Eval
+
 
 class IS(object):
     @classmethod
@@ -61,6 +63,18 @@ class IS(object):
             return True
         else:
             return False
+
+    @classmethod
+    def eval(cls, text, ctx={}):
+        if not isinstance(text, basestring):
+            return False
+        try:
+            dest = Eval(text, ctx).eval()
+            if dest != text:
+                return True
+        except:
+            pass
+        return False
 
     @classmethod
     def list_or_tuple(cls, item):

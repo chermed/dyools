@@ -119,6 +119,15 @@ class RPC(Mixin):
         print('Backup Size: %s' % size)
         return path
 
+    def create_db(self, dbname=False, with_demo=False, language='fr_FR'):
+        dbname = dbname or self.dbname
+        if dbname in self.list_db():
+            print('End: dbname=%s is already exists' % dbname)
+        else:
+            self.odoo.db.create(self.superadminpassword, dbname, with_demo, language, self.password)
+            print('The database [%s] is created' % dbname)
+        return dbname
+
     def drop_db(self, dbname=False):
         dbname = dbname or self.dbname
         if dbname in self.list_db():

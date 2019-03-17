@@ -141,6 +141,15 @@ class Env(Mixin):
             print('The database [%s] is not found' % dbname)
         return dbname
 
+    def create_db(self, dbname=False, with_demo=False, language='fr_FR'):
+        dbname = dbname or self.dbname
+        if dbname in self.list_db():
+            print('End: dbname=%s is already exists' % dbname)
+        else:
+            self.odoo.service.db.exp_create_database(dbname, with_demo, language, self.password, self.user)
+            print('The database [%s] is created' % dbname)
+        return dbname
+
     def restore_db(self, path, drop=False):
         assert os.path.isfile(path), 'The path [%s] should be a file' % path
         if drop:

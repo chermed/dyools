@@ -11,6 +11,7 @@ import odoorpc
 import yaml
 from dateutil.parser import parse as dtparse
 from lxml import etree
+from odoorpc.models import MetaModel
 from past.builtins import basestring
 from prettytable import PrettyTable
 
@@ -121,6 +122,9 @@ class Mixin(object):
                 print('Total: %s' % (len(tbl_data) - 1))
         else:
             return tbl_data
+
+    def is_rpc(self):
+        return self.__class__.__name__ == 'RPC'
 
     def path(self, module):
         if isinstance(module, basestring):
@@ -324,7 +328,7 @@ class Mixin(object):
         if isinstance(res, dict):
             context.update(res)
 
-    def _normalize_value_for_field(self, model, field, value, assets):
+    def _normalize_value_for_field(self, model, field, value, assets, context):
         values = {}
         ffield = self.env[model].fields_get()[field]
         ttype, relation, selection = ffield['type'], ffield.get('relation'), ffield.get('selection', [])
@@ -351,24 +355,26 @@ class Mixin(object):
             if assets:
                 value = os.path.join(assets, value)
             with open(value, "rb") as binary_file:
-                value = base64.b64encode(binary_file.read())
+                value = base64.b64encode(binary_file.read()).decode('utf-8')
         if ttype in ['many2one', 'many2many', 'one2many']:
             ids = None
             if value == '__all__':
-                ids = self.env[relation].search([]).ids
+                ids = self.to_obj(self.env[relation].search([])).ids
             elif value == '__first__':
-                ids = self.env[relation].search([], limit=1, order="id asc").ids
+                ids = self.to_obj(self.env[relation].search([], limit=1, order="id asc")).ids
             elif value == '__last__':
-                ids = self.env[relation].search([], limit=1, order="id desc").ids
+                ids = self.to_obj(self.env[relation].search([], limit=1, order="id desc")).ids
             elif isinstance(value, list) and IS.domain(value):
-                ids = self.env[relation].search(value).ids
+                ids = self.to_obj(self.env[relation].search(value)).ids
             elif isinstance(value, int):
                 ids = [value]
             elif isinstance(value, basestring):
-                if IS.xmlid(value):
+                if IS.eval(value, context):
+                    ids = [Eval(value, context).eval()]
+                elif IS.xmlid(value):
                     ids = self.env.ref(value).ids
                 else:
-                    ids = self.env[relation].search([('name', '=', value)]).ids
+                    ids = self.to_obj(self.env[relation].search([('name', '=', value)])).ids
             if ttype == 'many2one':
                 value = value if not ids else ids[0]
             elif ttype == 'many2many':
@@ -376,7 +382,7 @@ class Mixin(object):
         values[field] = value
         return values
 
-    def _onchange_spec(model, view_info=None):
+    def _onchange_spec(self, model, view_info=None):
         result = {}
         onchanges = []
         view_fields = []
@@ -391,7 +397,7 @@ class Mixin(object):
                     if node.attrib.get('on_change'):
                         onchanges.append(name)
                 # traverse the subviews included in relational fields
-                for subinfo in info['fields'][name].get('views', {}).itervalues():
+                for subinfo in info['fields'][name].get('views', {}).values():
                     process(etree.fromstring(subinfo['arch']), subinfo, names)
             else:
                 for child in node:
@@ -401,18 +407,23 @@ class Mixin(object):
             view_info = model.fields_view_get()
         process(etree.fromstring(view_info['arch']), view_info, '')
         return result, onchanges, view_fields
-    
+
     def _normalize_record_data(self, model, data, context, assets):
         record_data = {}
         model_env = self.env[model]
-        onchange_specs = model_env._onchange_spec()
-        import pdb; pdb.set_trace() #TODO remove me 
+        if self.is_rpc():
+            onchange_specs, _, _ = self._onchange_spec(model_env, view_info=None)
+        else:
+            onchange_specs = model_env._onchange_spec()
         for item in data:
             item = Eval(item, context).eval()
             for field, value in item.items():
-                values = self._normalize_value_for_field(model, field, value, assets)
+                values = self._normalize_value_for_field(model, field, value, assets, context)
                 record_data.update(values)
-                onchange_values = model_env.onchange(record_data, field, onchange_specs)
+                if self.is_rpc():
+                    onchange_values = model_env.onchange([], record_data, field, onchange_specs)
+                else:
+                    onchange_values = model_env.onchange(record_data, field, onchange_specs)
                 for k, v in onchange_values.get('value', {}).items():
                     if isinstance(v, (list, tuple)) and len(v) == 2:
                         v = v[0]
@@ -420,7 +431,7 @@ class Mixin(object):
         return record_data
 
     def _process_config(self, value):
-        return self.env['res.config.settings'].create(value).execute()
+        return self.to_obj('res.config.settings', self.env['res.config.settings'].create(value)).execute()
 
     def _process_record(self, data, context, assets):
         records = self.env[data['model']]
@@ -436,17 +447,25 @@ class Mixin(object):
             if isinstance(refs, int):
                 records = records.browse(refs)
             elif IS.xmlid(refs):
-                records = records.env.ref(refs, raise_if_not_found=False) or records
+                if self.is_rpc():
+                    try:
+                        records = records.env.ref(refs)
+                    except :
+                        pass
+                else :
+                    records = records.env.ref(refs, raise_if_not_found=False) or records
             elif isinstance(refs, basestring):
-                records = records.search([('name', '=', refs)])
+                records = self.to_obj(records._name, records.search([('name', '=', refs)]))
             elif isinstance(refs, list):
                 refs = Eval(refs, context).eval()
-                records = records.search(refs)
-            records = records.exists()
+                records = self.to_obj(records._name, records.search(refs))
+            if not self.is_rpc():
+                records = records.exists()
             if record_filter:
                 if len(records) > 0:
                     print(['&', ('id', 'in', records.ids)] + record_filter)
                     records = records.search(['&', ('id', 'in', records.ids)] + record_filter)
+                    records = self.to_obj(records._name, records)
                     if not records:
                         return False
         if record_ctx:
@@ -454,10 +473,10 @@ class Mixin(object):
         if record_data:
             assert isinstance(record_data, list), "The data [%s] should be a list" % record_data
             record_data = self._normalize_record_data(records._name, record_data, context, assets)
-            if len(records) > 0:
+            if not isinstance(records, MetaModel) and records and len(records) > 0:
                 records.write(record_data)
             else:
-                records = records.create(record_data)
+                records = self.to_obj(records._name, records.create(record_data))
                 if isinstance(refs, basestring) and IS.xmlid(refs):
                     self.update_xmlid(records, xmlid=refs)
         if record_export:
