@@ -438,37 +438,36 @@ class Mixin(object):
         if mode_create:
             records = self.env[model]
             fields = records.fields_get()
-            default_data = records.default_get(list(fields.keys()))
-            record_data = {}
-            for f, opts in fields.items():
-                record_data[f] = default_data.get(f, DEFAULT_VALUES[opts['type']])
+            # default_data = records.default_get(list(fields.keys()))
+            # record_data = {}
+            # for f, opts in fields.items():
+            #     record_data[f] = default_data.get(f, DEFAULT_VALUES[opts['type']])
+            record_data = records.default_get(list(fields.keys()))
         else:
             record_data = {}
 
-        model_env = self.env[model]
-        if self.is_rpc():
-            onchange_specs, y, x = self._onchange_spec(model_env, view_info=None)
-        else:
-            onchange_specs = model_env._onchange_spec()
+        # model_env = self.env[model]
+        # if self.is_rpc():
+        #     onchange_specs, y, x = self._onchange_spec(model_env, view_info=None)
+        # else:
+        #     onchange_specs = model_env._onchange_spec()
         for item in data:
             item = Eval(item, context).eval()
             for field, value in item.items():
                 values = self._normalize_value_for_field(model, field, value, record_view_xmlid, record_data, assets,
                                                          context)
                 record_data.update(values)
-                record_data.update(one2many_data)
-                one2many_data = {}
-                if self.is_rpc():
-                    onchange_values = model_env.onchange([], record_data, field, onchange_specs)
-                else:
-                    onchange_values = model_env.onchange(record_data, field, onchange_specs)
-
-                for k, v in onchange_values.get('value', {}).items():
-                    if isinstance(v, (list, tuple)) and len(v) == 2:
-                        v = v[0]
-                    record_data[k] = v
-        from pprint import pprint
-        pprint(locals())
+                # record_data.update(one2many_data)
+                # one2many_data = {}
+                # if self.is_rpc():
+                #     onchange_values = model_env.onchange([], record_data, field, onchange_specs)
+                # else:
+                #     onchange_values = model_env.onchange(record_data, field, onchange_specs)
+                #
+                # for k, v in onchange_values.get('value', {}).items():
+                #     if isinstance(v, (list, tuple)) and len(v) == 2:
+                #         v = v[0]
+                #     record_data[k] = v
         return record_data
 
     def _process_config(self, value):
