@@ -396,7 +396,7 @@ def __db_dump(ctx, destination, drop, zip):
             path = rpc.dump_db(dest=tmp, zip=zip)
             destination_rpc.restore_db(path, drop=drop)
     else:
-        rpc.restore_db(destination, drop=drop)
+        rpc.dump_db(destination)
 
 
 @cli_rpc.command('db_restore')

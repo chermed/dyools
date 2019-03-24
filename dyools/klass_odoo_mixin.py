@@ -4,6 +4,7 @@ import base64
 import importlib
 import logging
 import os
+from collections import defaultdict
 from datetime import datetime, date
 from functools import partial
 
@@ -18,10 +19,19 @@ from prettytable import PrettyTable
 from .klass_eval import Eval
 from .klass_is import IS
 from .klass_path import Path
+from .klass_print import Print
 from .klass_tool import Tool
 
 logger = logging.getLogger(__name__)
 DATE_FORMAT, DATETIME_FORMAT = "%Y-%m-%d", "%Y-%m-%d %H:%M:%S"
+DEFAULT_VALUES = defaultdict(lambda: False)
+DEFAULT_VALUES.update({
+    'float': 0,
+    'integer': 0,
+    'monetary': 0,
+    'one2many': [],
+    'many2many': [],
+})
 
 
 class Mixin(object):
@@ -328,7 +338,7 @@ class Mixin(object):
         if isinstance(res, dict):
             context.update(res)
 
-    def _normalize_value_for_field(self, model, field, value, assets, context):
+    def _normalize_value_for_field(self, model, field, value, record_view_xmlid, record_data, assets, context):
         values = {}
         ffield = self.env[model].fields_get()[field]
         ttype, relation, selection = ffield['type'], ffield.get('relation'), ffield.get('selection', [])
@@ -340,12 +350,18 @@ class Mixin(object):
             if isinstance(value, date):
                 value = value.strftime(DATE_FORMAT)
             else:
-                value = dtparse(str(value), dayfirst=True, fuzzy=True).strftime(DATE_FORMAT)
+                try:
+                    value = dtparse(str(value), dayfirst=True, fuzzy=True).strftime(DATE_FORMAT)
+                except:
+                    value: False
         elif ttype == 'datetime':
             if isinstance(value, datetime):
                 value = value.strftime(DATETIME_FORMAT)
             else:
-                value = dtparse(str(value), dayfirst=True, fuzzy=True).strftime(DATETIME_FORMAT)
+                try:
+                    value = dtparse(str(value), dayfirst=True, fuzzy=True).strftime(DATETIME_FORMAT)
+                except:
+                    value: False
         elif ttype == 'selection':
             for k, v in selection:
                 if k == value or v == value:
@@ -374,11 +390,20 @@ class Mixin(object):
                 elif IS.xmlid(value):
                     ids = self.env.ref(value).ids
                 else:
-                    ids = self.to_obj(self.env[relation].search([('name', '=', value)])).ids
+                    ids = self.to_obj(relation, self.env[relation].search([('name', '=', value)])).ids
             if ttype == 'many2one':
                 value = value if not ids else ids[0]
             elif ttype == 'many2many':
                 value = value if ids is None else [(6, 0, ids)]
+            else:
+                on2many_list = []
+                for one2many_line in value:
+                    on2many_values = self._normalize_record_data(relation, field, one2many_line, True,
+                                                                 record_view_xmlid,
+                                                                 {ffield['relation_field']: record_data}, assets,
+                                                                 context)
+                    on2many_list.append((0, 0, on2many_values))
+                value = on2many_list
         values[field] = value
         return values
 
@@ -408,26 +433,42 @@ class Mixin(object):
         process(etree.fromstring(view_info['arch']), view_info, '')
         return result, onchanges, view_fields
 
-    def _normalize_record_data(self, model, data, context, assets):
-        record_data = {}
+    def _normalize_record_data(self, model, field, data, mode_create, record_view_xmlid, one2many_data, assets,
+                               context):
+        if mode_create:
+            records = self.env[model]
+            fields = records.fields_get()
+            default_data = records.default_get(list(fields.keys()))
+            record_data = {}
+            for f, opts in fields.items():
+                record_data[f] = default_data.get(f, DEFAULT_VALUES[opts['type']])
+        else:
+            record_data = {}
+
         model_env = self.env[model]
         if self.is_rpc():
-            onchange_specs, _, _ = self._onchange_spec(model_env, view_info=None)
+            onchange_specs, y, x = self._onchange_spec(model_env, view_info=None)
         else:
             onchange_specs = model_env._onchange_spec()
         for item in data:
             item = Eval(item, context).eval()
             for field, value in item.items():
-                values = self._normalize_value_for_field(model, field, value, assets, context)
+                values = self._normalize_value_for_field(model, field, value, record_view_xmlid, record_data, assets,
+                                                         context)
                 record_data.update(values)
+                record_data.update(one2many_data)
+                one2many_data = {}
                 if self.is_rpc():
                     onchange_values = model_env.onchange([], record_data, field, onchange_specs)
                 else:
                     onchange_values = model_env.onchange(record_data, field, onchange_specs)
+
                 for k, v in onchange_values.get('value', {}).items():
                     if isinstance(v, (list, tuple)) and len(v) == 2:
                         v = v[0]
                     record_data[k] = v
+        from pprint import pprint
+        pprint(locals())
         return record_data
 
     def _process_config(self, value):
@@ -440,6 +481,7 @@ class Mixin(object):
         record_functions = data.get('functions', [])
         record_export = data.get('export')
         record_filter = data.get('filter')
+        record_view_xmlid = data.get('view_xmlid')
         record_ctx = data.get('context', {})
         if context.get('__global_context__'):
             record_ctx.update(context.get('__global_context__'))
@@ -450,9 +492,9 @@ class Mixin(object):
                 if self.is_rpc():
                     try:
                         records = records.env.ref(refs)
-                    except :
+                    except:
                         pass
-                else :
+                else:
                     records = records.env.ref(refs, raise_if_not_found=False) or records
             elif isinstance(refs, basestring):
                 records = self.to_obj(records._name, records.search([('name', '=', refs)]))
@@ -472,11 +514,14 @@ class Mixin(object):
             records = records.with_context(**record_ctx)
         if record_data:
             assert isinstance(record_data, list), "The data [%s] should be a list" % record_data
-            record_data = self._normalize_record_data(records._name, record_data, context, assets)
             if not isinstance(records, MetaModel) and records and len(records) > 0:
+                record_data = self._normalize_record_data(records._name, False, record_data, False, record_view_xmlid,
+                                                          {}, assets, context)
                 records.write(record_data)
             else:
-                records = self.to_obj(records._name, records.create(record_data))
+                record_data = self._normalize_record_data(records._name, False, record_data, True, record_view_xmlid,
+                                                          {}, assets, context)
+                records = self.to_obj(records._name, records.env[records._name].create(record_data))
                 if isinstance(refs, basestring) and IS.xmlid(refs):
                     self.update_xmlid(records, xmlid=refs)
         if record_export:
@@ -500,7 +545,8 @@ class Mixin(object):
                 print("[%s] ***** Execute python *****" % index)
                 self._process_python(value, context, assets)
             elif key == 'record':
-                print("[%s] ***** Process record *****" % index)
+                print("[%s] ***** Process record ***** <model=%s refs=%s>" % (
+                    index, value.get('model', ''), value.get('refs', '')))
                 self._process_record(value, context, assets)
             elif key == 'title':
                 value = Eval(value, context).eval()
@@ -554,11 +600,11 @@ class Mixin(object):
                         __add_file(os.path.join(dirpath, filename))
             elif os.path.isfile(path):
                 __add_file(path)
+        files = sorted(files, key=lambda item: os.path.basename(item).lower().strip())
         print('[%s] Files to process : ' % len(files))
-        for file in files:
-            print("  - %s" % file)
+        for i, file in enumerate(files, 1):
+            print("%s  - %s" % (i, file))
         contents = ""
-        files = sorted(files, key=lambda item: os.path.basename(item.lower().strip()))
         for file in files:
             with open(file) as f:
                 contents += "\n\n---\n\n"

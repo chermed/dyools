@@ -28,8 +28,6 @@ class XML(object):
                     break
             if ok:
                 result += line
-        from pprint import pprint
-        pprint(result)
         return result
 
     def _full_path(self, xpath, node):
@@ -48,6 +46,7 @@ class XML(object):
     def _xpath(self, *tags, **attrs):
         nodes = []
         for xpath in self.get_xpath_expr(*tags, **attrs):
+            print('>>>', xpath)
             for node in self.root.xpath(xpath):
                 nodes.append(node)
         return nodes
@@ -68,6 +67,40 @@ class XML(object):
                 xpath = '{}{}'.format(_prefix, tag)
             expressions.append(xpath)
         return expressions
+
+    def query(self, tag, attr, attrs={}, only_parent=False, child_of=False, under=False):
+        def parent_node(node):
+            is_under = False
+            initial = value = node.attrib.get(attr)
+            path = tag
+            while node.getparent() is not None:
+                node = node.getparent()
+                path = '{}.{}'.format(node.tag, path)
+                if node.tag == tag and node.attrib.get(attr):
+                    value = '{}.{}'.format(node.attrib.get(attr), value)
+                if node.tag == under:
+                    is_under = True
+            return initial, value, path, is_under
+
+        nodes = []
+        for node in self._xpath(tag):
+            ok = True
+            for k, v in attrs.items():
+                if not isinstance(v, (list, tuple)):
+                    v = [v]
+                if node.attrib.get(k) not in v:
+                    ok = False
+            if ok:
+                nodes.append(node)
+        res = [parent_node(node) for node in nodes]
+        if only_parent:
+            res = filter(lambda s: not s[1].count('.'), res)
+        if child_of:
+            res = filter(lambda s: s[1].startswith('{}.'.format(child_of)), res)
+            res = map(lambda s: (s[0], s[1], s[2][len(child_of) + 1:], s[3]), res)
+        if under:
+            res = filter(lambda s: s[3], res)
+        return list(map(lambda r: [r[0], r[1], r[2]], res))
 
     def xpath(self, *tags, **attrs):
         return [etree.tostring(node).strip() for node in self._xpath(*tags, **attrs)]
