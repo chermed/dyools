@@ -22,7 +22,7 @@ def cli_xml(attrs, tags, separator, with_arch):
     if arch.count(separator) == 2:
         ok = False
         for line in arch.split('\n'):
-            if line == separator:
+            if line.strip() == separator.strip():
                 if not ok:
                     ok = True
                     continue
