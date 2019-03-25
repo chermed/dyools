@@ -46,7 +46,6 @@ class XML(object):
     def _xpath(self, *tags, **attrs):
         nodes = []
         for xpath in self.get_xpath_expr(*tags, **attrs):
-            print('>>>', xpath)
             for node in self.root.xpath(xpath):
                 nodes.append(node)
         return nodes
@@ -111,13 +110,22 @@ class XML(object):
             for node in self.root.xpath(xpath):
                 result.append(['Xpath', xpath])
                 result.append(['Expression', self._full_path(xpath, node)])
+        return result
+
+    def expr_with_arch(self, *tags, **attrs):
+        result = []
+        for xpath in self.get_xpath_expr(*tags, **attrs):
+            for node in self.root.xpath(xpath):
+                result.append(['Xpath', xpath])
+                result.append(['Expression', self._full_path(xpath, node)])
                 result.append(['Architecture', self.pretty(node).strip()])
         return result
 
-    def pretty(self, node=False):
-        node = node or self.root
+    def pretty(self, node=None):
+        if node is None:
+            node = self.root
         try:
-            return etree.tostring(node, pretty_print=True, encoding='utf-8')
+            return etree.tostring(node, pretty_print=True, encoding='utf-8').decode('utf-8')
         except:
             return etree.tostring(node)
 
