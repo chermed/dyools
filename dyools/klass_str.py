@@ -21,6 +21,10 @@ class Str(object):
         txt = ''.join(txt)
         return self.to_str(txt)
 
+    def dot_to_underscore(self):
+        txt = self.arg.strip().replace('.', '_')
+        return self.to_str(txt)
+
     def to_title(self):
         txt = self.arg.strip()
         txt = txt.strip('_')

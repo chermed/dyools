@@ -49,3 +49,12 @@ class TestStr(TestCase):
         self.assertEqual(Str('__name.last').to_title(), 'Name Last')
         self.assertEqual(Str('__name_LAST').to_title(), 'Name Last')
         self.assertEqual(Str('__name_LAST___').to_title(), 'Name Last')
+
+    def test_dot_to_underscore(self):
+        from dyools import Str
+        self.assertEqual(Str('__name').dot_to_underscore(), '__name')
+        self.assertEqual(Str('__name.x').dot_to_underscore(), '__name_x')
+        self.assertEqual(Str('__name.last').dot_to_underscore(), '__name_last')
+        self.assertEqual(Str('__name_LAST').dot_to_underscore(), '__name_LAST')
+        self.assertEqual(Str('__name_LAST___').dot_to_underscore(), '__name_LAST___')
+

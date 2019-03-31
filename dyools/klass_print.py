@@ -1,16 +1,16 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
-from enum import auto, Enum
+from enum import Enum
 
 from .klass_logger import Logger
 
 
 class STATE(Enum):
-    INFO = auto()
-    ERROR = auto()
-    WARNING = auto()
-    SUCCESS = auto()
-    DEBUG = auto()
+    INFO = 'INFO'
+    ERROR = 'ERROR'
+    WARNING = 'WARNING'
+    SUCCESS = 'SUCCESS'
+    DEBUG = 'DEBUG'
 
 
 class Print(object):

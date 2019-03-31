@@ -1,16 +1,20 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import os
+
 import yaml
 
 from .klass_path import Path
 
 
 class YamlConfig(object):
-    def __init__(self, path, defaults={}):
+    def __init__(self, path, defaults={}, create_if_not_exists=False):
         self.path = path
-        Path.touch(path)
+        if create_if_not_exists:
+            Path.touch(path)
+        assert os.path.isfile(path), "The file [%s] not found" % path
         with open(path) as f:
-            self.__data = yaml.load(f.read()) or {}
+            self.__data = yaml.load(f.read(), Loader=yaml.UnsafeLoader) or {}
         self.defaults = defaults
 
     def set_defaults(self, name=False):

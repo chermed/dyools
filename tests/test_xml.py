@@ -391,8 +391,4 @@ class TestXML(TestCase):
     def test_xml_query(self):
         from dyools import XML
         xml = XML(self.big_xml)
-        print(xml.query('field', 'name'))
-        print('----')
-        from pprint import pprint
-        pprint(xml.query('field', 'name', only_parent=False, child_of='order_line', under='tree'))
-        self.assertEqual(1, 2)
+

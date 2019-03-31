@@ -23,7 +23,7 @@ class Convert(object):
         return amount
 
     @classmethod
-    def time(self, tt, origin, to, r=None):
+    def time(self, tt, origin='S', to='S', r=None):
         units = ["MS", "S", "M", "H"]
         origin, to = origin.strip().upper(), to.strip().upper()
         assert origin in units and to in units, 'The units are not mapped'

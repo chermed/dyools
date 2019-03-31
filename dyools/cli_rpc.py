@@ -104,7 +104,7 @@ def fmt_connect(config):
 @click.pass_context
 def cli_rpc(ctx, database, host, port, user, password, superadminpassword, protocol, timeout, config, load, mode, yes,
             no_context, debug):
-    yaml_obj = YamlConfig(config)
+    yaml_obj = YamlConfig(config, create_if_not_exists=True)
     configs = yaml_obj.get_data()
     ctx.obj = {}
     rpc = False

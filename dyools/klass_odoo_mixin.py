@@ -4,7 +4,6 @@ import base64
 import importlib
 import logging
 import os
-import sys
 from collections import defaultdict
 from datetime import datetime, date
 from functools import partial
@@ -35,7 +34,8 @@ DEFAULT_VALUES.update({
 CONCURRENCY_CHECK_FIELD = '__last_update'
 LOG_ACCESS_COLUMNS = ['create_uid', 'create_date', 'write_uid', 'write_date']
 MAGIC_COLUMNS = ['id'] + LOG_ACCESS_COLUMNS
-ONCHANGE_RESERVED = [CONCURRENCY_CHECK_FIELD] + LOG_ACCESS_COLUMNS
+ONCHANGE_RESERVED = [CONCURRENCY_CHECK_FIELD] + MAGIC_COLUMNS
+
 
 class Mixin(object):
     def __init__(self):
@@ -356,7 +356,7 @@ class Mixin(object):
                 try:
                     value = dtparse(str(value), dayfirst=True, fuzzy=True).strftime(DATE_FORMAT)
                 except:
-                    value: False
+                    value = False
         elif ttype == 'datetime':
             if isinstance(value, datetime):
                 value = value.strftime(DATETIME_FORMAT)
@@ -364,7 +364,7 @@ class Mixin(object):
                 try:
                     value = dtparse(str(value), dayfirst=True, fuzzy=True).strftime(DATETIME_FORMAT)
                 except:
-                    value: False
+                    value = False
         elif ttype == 'selection':
             for k, v in selection:
                 if k == value or v == value:
@@ -421,7 +421,7 @@ class Mixin(object):
                 names = "%s.%s" % (prefix, name) if prefix else name
                 view_fields.append(name)
                 if not result.get(names):
-                    result[names] = node.attrib.get('on_change')
+                    result[names] = node.attrib.get('on_change', '')
                     if node.attrib.get('on_change'):
                         onchanges.append(name)
                 # traverse the subviews included in relational fields
@@ -441,6 +441,8 @@ class Mixin(object):
         model_env = self.env[model]
         fields = model_env.fields_get()
         onchange_all_data = {}
+        if field:
+            onchange_all_data[field] = one2many_data or {}
         for f, opts in fields.items():
             if f not in ONCHANGE_RESERVED:
                 onchange_all_data[f] = DEFAULT_VALUES[opts['type']]
@@ -450,24 +452,25 @@ class Mixin(object):
             data = [record_data] + data
         else:
             record_data = {}
-        if self.is_rpc():
-            onchange_specs, _, _ = self._onchange_spec(model_env, view_info=None) # TODO 
-        else:
-            onchange_specs = model_env._onchange_spec() # TODO add fields_view_get
+        # if self.is_rpc():
+        #     onchange_specs, onchange_fields, _ = self._onchange_spec(model_env, view_info=None)  # TODO
+        # else:
+        #     onchange_specs = model_env._onchange_spec()  # TODO add fields_view_get
         for item in data:
             for field, value in item.items():
                 values = self._normalize_value_for_field(model, field, value, record_view_xmlid, record_data, assets,
                                                          context)
                 record_data.update(values)
-                onchange_all_data.update(record_data)
-                if self.is_rpc():
-                    onchange_values = model_env.onchange([], onchange_all_data, field, onchange_specs)
-                else:
-                    onchange_values = model_env.onchange(onchange_all_data, field, onchange_specs)
-                for k, v in onchange_values.get('value', {}).items():
-                    if isinstance(v, (list, tuple)) and len(v) == 2:
-                        v = v[0]
-                    record_data[k] = v
+                # onchange_all_data.update(record_data)
+                # if field in onchange_fields:
+                #     if self.is_rpc():
+                #         onchange_values = model_env.onchange([], onchange_all_data, field, onchange_specs)
+                #     else:
+                #         onchange_values = model_env.onchange(onchange_all_data, field, onchange_specs)
+                #     for k, v in onchange_values.get('value', {}).items():
+                #         if isinstance(v, (list, tuple)) and len(v) == 2:
+                #             v = v[0]
+                #         record_data[k] = v
         return record_data
 
     def _process_config(self, value):
@@ -514,10 +517,12 @@ class Mixin(object):
             assert isinstance(record_data, list), "The data [%s] should be a list" % record_data
             record_data = Eval(record_data, context).eval()
             if not isinstance(records, MetaModel) and records and len(records) > 0:
+                record_data[0]['id'] = records.id
                 record_data = self._normalize_record_data(records._name, False, record_data, False, record_view_xmlid,
                                                           {}, assets, context)
                 records.write(record_data)
             else:
+
                 record_data = self._normalize_record_data(records._name, False, record_data, True, record_view_xmlid,
                                                           {}, assets, context)
                 records = self.to_obj(records._name, records.env[records._name].create(record_data))
