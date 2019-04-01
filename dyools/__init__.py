@@ -7,6 +7,8 @@ from .klass_connector import Connector
 from .klass_odoo_connector import OdooConnector
 from .klass_consumer import Consumer
 from .klass_convert import Convert
+from .klass_csv_connector import CsvConnector
+from .klass_csv_job import CsvJob
 from .klass_data import Data
 from .klass_date import Date
 from .klass_debug import log

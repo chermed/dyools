@@ -8,15 +8,17 @@ from threading import Thread
 logger = logging.getLogger(__name__)
 
 class Queue(object):
-    def __init__(self):
+    def __init__(self, maxsize=0):
         self._stop = False
-        self.sender_index = 0
         self._data = {}
         self._to_send = {}
-        self._py_queue = pyQueue()
+        self._py_queue = pyQueue(maxsize=maxsize)
 
     def push(self, index):
         self._py_queue.put(index)
+
+    def qsize(self):
+        return self._py_queue.qsize()
 
     def get_next_index(self, timeout=1, default=0):
         try:
@@ -38,34 +40,30 @@ class Queue(object):
         time.sleep(wait)
         self._stop = True
 
-    def send(self):
+    def start(self):
+        logger.info('queue: processing is started')
+        last_index = 0
         while True:
-            receiver_index = self.get_next_index(default=0)
-            if receiver_index:
-                if not self.sender_index:
-                    self.sender_index =receiver_index
-            if receiver_index and self.sender_index < receiver_index:
-                logger.info('sender: start to process the priority [%s]' % self.sender_index)
-                jobs = self._data[self.sender_index]
-                queue_threads, len_queue_priority = self._to_send[self.sender_index]
+            index = self.get_next_index(default=0)
+            if index:
+                if last_index and index > last_index:
+                    del self._to_send[index]
+                    del self._data[index]
+                last_index = index
+                jobs = self._data[index]
+                queue_threads, len_queue_priority = self._to_send[index]
                 queue_threads = min([queue_threads, len_queue_priority])
-                index = 0
-                while index < len_queue_priority:
-                    logger.info('sender: stage priority=%s %s-%s/%s',self.sender_index, index, queue_threads + index, len_queue_priority)
-                    tab = []
-                    for i in range(queue_threads):
-                        put_method, data = jobs[index]
-                        index += 1
-                        t = Thread(target=put_method, args=(data,))
-                        t.start()
-                        tab.append(t)
-                    for t in tab:
-                        t.join()
-                    queue_threads = min([queue_threads, len(jobs[index:])])
-                logger.info('sender: complete the priority %s move to %s', self.sender_index, receiver_index)
-                self.sender_index = receiver_index
-
-            if not receiver_index and self._stop:
-                self.sender_index = receiver_index
-                logger.info('sender: receive stop signal')
+                logger.info('queue: start to process priority=%s threads=%s',index, queue_threads)
+                tab = []
+                for i in range(queue_threads):
+                    put_method, data = jobs[i]
+                    i += 1
+                    t = Thread(target=put_method, args=(data,))
+                    t.start()
+                    tab.append(t)
+                for t in tab:
+                    t.join()
+                logger.info('queue: end portion of the priority %s', index)
+            if not index and self._stop:
+                logger.info('queue: receive stop signal')
                 break

@@ -9,6 +9,7 @@ from threading import Thread
 
 import click
 
+from .klass_path import Path
 from .klass_convert import Convert
 from .klass_operator import Operator
 from .klass_queue import Queue
@@ -17,9 +18,7 @@ from .klass_yaml_config import YamlConfig
 
 
 def __execute(logger, config, path, ctx):
-    full_path = os.path.abspath(path)
-    if not os.path.isfile(full_path):
-        full_path = os.path.join(os.path.dirname(config), path)
+    full_path = Path.find_file_path(path, config)
     if not os.path.isfile(full_path):
         assert os.path.isfile(full_path), "The file [%s] not found" % full_path
     try:
@@ -34,12 +33,22 @@ def __load_connectors(logger, config, yaml, context):
     connectors = yaml.get_data()['connectors']
     for name, klass_path in connectors.items():
         params = yaml.get_data().get('params', {}).get(name, {})
+        if params.get('path'):
+            param_path = Path.find_file_path(params['path'], config)
+            params.update(dict(path=param_path))
         path, klass = klass_path.split('::')
         _ctx = context.copy()
         __execute(logger, config, path, _ctx)
         ctx_params = context.copy()
         ctx_params.update(params)
+        ctx_params.update(dict(params=params))
         context[name] = _ctx[klass](**ctx_params).get
+        try:
+            _ctx[klass](**ctx_params).get()
+        except:
+            logger.error(traceback.format_exc())
+            logger.error('can not open the stream [path=%s][class=%s]', path, klass)
+            sys.exit(-1)
 
 
 def __get_jobs_priorities(logger, config, yaml, context, select, start, stop):
@@ -62,8 +71,8 @@ def __get_jobs_priorities(logger, config, yaml, context, select, start, stop):
             result.setdefault(priority, [])
             get_klass_method = job.pop('get')
             put_klass_method = job.pop('put')
-            g_path, g_klass, g_method = get_klass_method.split('::')
-            p_path, p_klass, p_method = put_klass_method.split('::')
+            [g_path, g_klass], g_method = get_klass_method.split('::'), 'get'
+            [p_path, p_klass], p_method = put_klass_method.split('::'), 'put'
             limit = job.get('limit', 0)
             offset = job.get('offset', 0)
             domain = job.get('domain', [])
@@ -76,6 +85,7 @@ def __get_jobs_priorities(logger, config, yaml, context, select, start, stop):
                 step = limit
                 try:
                     count = ctx[g_klass](**job_ctx).count()
+                    logger.info('receiver: the count from [%s] is [%s] item(s)', g_klass, count)
                 except Exception as e:
                     logger.error(traceback.format_exc())
                     logger.error('path: %s', g_path)
@@ -108,9 +118,10 @@ def __get_jobs_priorities(logger, config, yaml, context, select, start, stop):
 @click.option('--select', '-s', type=click.STRING, nargs=1, multiple=True)
 @click.pass_context
 def cli_migrate(ctx, logfile, config, log_level, start, stop, select):
-    """Command line for migrate"""
+    """Command line Interface for migration"""
     time_start = time.time()
-    os.chdir(os.path.dirname(config))
+    root_path = os.path.dirname(config)
+    os.chdir(root_path)
     yaml = YamlConfig(config)
     logger = logging.getLogger()
     logger.setLevel(log_level.upper())
@@ -131,13 +142,12 @@ def cli_migrate(ctx, logfile, config, log_level, start, stop, select):
     __load_connectors(logger, config, yaml, context)
     jobs, priorities = __get_jobs_priorities(logger, config, yaml, context, select, start, stop)
 
-    queue = Queue()
-    send_thread = Thread(target=queue.send, args=())
+    queue = Queue(maxsize=20)
+    send_thread = Thread(target=queue.start, args=())
     send_thread.start()
-    last_priority = 0
     len_priorities = len(priorities)
     for i, (queue_priority, queue_threads) in enumerate(priorities.items(), 1):
-        logger.info('receiver: global advance %s/%s', i, len_priorities)
+        logger.info('receiver: global priorities progression %s/%s', i, len_priorities)
         len_queue_priority = len(jobs[queue_priority])
         queue.add(queue_priority, queue_threads, len_queue_priority)
         queue_threads = min([queue_threads, len_queue_priority])
@@ -155,18 +165,8 @@ def cli_migrate(ctx, logfile, config, log_level, start, stop, select):
             for t in tab:
                 t.join()
             queue_threads = min([queue_threads, len(jobs[queue_priority][index:])])
-        queue.push(queue_priority)
-        while True:
-            # wait for sender to finish with last_priority
-            time.sleep(1)
-            logger.debug('receiver: current prioritry=%s wait sender_index=%s >= last_priority=%s', queue_priority,
-                         queue.sender_index, last_priority)
-            if queue.sender_index >= last_priority:
-                logger.info(
-                    'receiver: after waiting for sender advance [last priority=%s], continue to priority after [%s]',
-                    last_priority, queue_priority)
-                break
-        last_priority = queue_priority
+            logger.info('receiver: current queue size=%s', queue.qsize())
+            queue.push(queue_priority)
     queue.stop()
     send_thread.join()
     logger.info('all: migration is completed [time=%s] [time=%s]',

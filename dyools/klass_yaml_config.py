@@ -8,13 +8,20 @@ from .klass_path import Path
 
 
 class YamlConfig(object):
-    def __init__(self, path, defaults={}, create_if_not_exists=False):
+    def __init__(self, path, defaults={}, create_if_not_exists=False, many=False):
         self.path = path
         if create_if_not_exists:
             Path.touch(path)
         assert os.path.isfile(path), "The file [%s] not found" % path
         with open(path) as f:
-            self.__data = yaml.load(f.read(), Loader=yaml.UnsafeLoader) or {}
+            if many:
+                yaml_load = yaml.load_all
+            else:
+                yaml_load = yaml.load
+            if hasattr(yaml, 'UnsafeLoader'):
+                self.__data = yaml_load(f.read(), Loader=yaml.UnsafeLoader) or {}
+            else:
+                self.__data = yaml_load(f.read()) or {}
         self.defaults = defaults
 
     def set_defaults(self, name=False):

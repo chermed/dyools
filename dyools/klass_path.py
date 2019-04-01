@@ -145,6 +145,16 @@ class Path(object):
             return list(matches)
 
     @classmethod
+    def find_file_path(cls, path, home=False):
+        full_path = path
+        if not os.path.isfile(path):
+            if home:
+                if os.path.isfile(home):
+                    home = os.path.dirname(home)
+                full_path = os.path.join(home, path)
+        return full_path
+
+    @classmethod
     def grep(cls, expressions, files, comment=False):
         if not isinstance(expressions, list):
             expressions = [expressions]

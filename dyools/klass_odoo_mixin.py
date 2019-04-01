@@ -9,7 +9,6 @@ from datetime import datetime, date
 from functools import partial
 
 import odoorpc
-import yaml
 from dateutil.parser import parse as dtparse
 from lxml import etree
 from odoorpc.models import MetaModel
@@ -20,6 +19,7 @@ from .klass_eval import Eval
 from .klass_is import IS
 from .klass_path import Path
 from .klass_tool import Tool
+from .klass_yaml_config import YamlConfig
 
 logger = logging.getLogger(__name__)
 DATE_FORMAT, DATETIME_FORMAT = "%Y-%m-%d", "%Y-%m-%d %H:%M:%S"
@@ -624,7 +624,7 @@ class Mixin(object):
                 '__global_context__': {},
             }
             index = 0
-            for doc in yaml.load_all(open(full_yaml_path)):
+            for doc in YamlConfig(full_yaml_path, many=True).get_data():
                 if doc:
                     index += 1
                     self._process_yaml_doc(index, doc, context, assets)

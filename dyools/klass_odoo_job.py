@@ -10,8 +10,6 @@ logger = logging.getLogger(__name__)
 
 
 class OdooJob(Job):
-    _source = False
-    _destination = False
     _name = False
     _source_name = False
     _destination_name = False
@@ -20,9 +18,9 @@ class OdooJob(Job):
     _destination_fields = False
 
     def __init__(self, **kwargs):
-        if not all([self._name, self._fields, self._source, self._destination]):
+        if not all([self._name, self._fields]):
             raise Exception(
-                "An OdooJob subclass should define the static variables : _name, _fields, _source_destination")
+                "An OdooJob subclass should define the static variables : _name, _fields")
         if not self._source_fields:
             self._source_fields = self._fields
         if not self._destination_fields:
@@ -34,17 +32,17 @@ class OdooJob(Job):
         super(OdooJob, self).__init__(**kwargs)
 
     def get(self, put_method, queue, priority):
-        odoo = self.context[self._source]()
+        odoo = self.get_source()
         ids = odoo.env[self._source_name].search(self.domain, offset=self.offset, limit=self.limit)
         queue.append(priority, put_method, odoo.env[self._source_name].read(ids, self._source_fields))
 
     def put(self, data):
-        data = self.tranform(data)
-        odoo = self.context[self._destination]()
+        data = self.transform(data)
+        odoo = self.get_destination()
         if self.context.get('primary_keys'):
             logger.info('sender: odoojob use create/write based on fields = %s' % self.context['primary_keys'])
             for record in data:
-                domain = self.domain + [(pk, '=', record[pk]) for pk in self.context['primary_keys']]
+                domain = [(pk, '=', record[pk]) for pk in self.context['primary_keys']]
                 ids = odoo.env[self._destination_name].search(domain)
                 if ids:
                     odoo.env[self._destination_name].write(ids, record)
@@ -53,16 +51,18 @@ class OdooJob(Job):
                 if not ids:
                     return False
         else:
-            fields, data = self._generic_tranform(odoo, data)
+            fields, data = self._generic_transform(odoo, data)
             logger.info('sender: odoojob use load model=%s fields=%s', self._destination_name, fields)
+            logger.debug('sender: odoojob call load with fields=%s data=%s', fields, data)
             if not odoo.env[self._destination_name].load(fields, data):
                 return False
         return True
 
-    def tranform(self, data):
+    def transform(self, data):
+        print('PASS HERE') # TODO
         return data
 
-    def _generic_tranform(self, odoo, read_data):
+    def _generic_transform(self, odoo, read_data):
         ffield = odoo.env[self._destination_name].fields_get()
         load_data = []
         fields = []
@@ -89,4 +89,4 @@ class OdooJob(Job):
         return fields, load_data
 
     def count(self):
-        return self.context[self._source]().env[self._source_name].search_count([])
+        return self.get_source().env[self._source_name].search_count([])
