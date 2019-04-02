@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class CsvJob(OdooJob):
 
-    def get(self, put_method, queue, priority):
+    def get(self, put_method, queue_data):
         fcsv = self.get_source()
         data = []
         for i, line in enumerate(fcsv):
@@ -18,7 +18,7 @@ class CsvJob(OdooJob):
             if self.limit and i >= self.offset and i == self.limit+self.offset:
                 break
             data.append(dict(line))
-        queue.append(priority, put_method, data)
+        queue_data.append((put_method, data))
 
     def count(self):
         return sum(1 for _ in self.get_source())

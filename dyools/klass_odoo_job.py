@@ -31,10 +31,10 @@ class OdooJob(Job):
             self._destination_name = self._name
         super(OdooJob, self).__init__(**kwargs)
 
-    def get(self, put_method, queue, priority):
+    def get(self, put_method, queue_data):
         odoo = self.get_source()
         ids = odoo.env[self._source_name].search(self.domain, offset=self.offset, limit=self.limit)
-        queue.append(priority, put_method, odoo.env[self._source_name].read(ids, self._source_fields))
+        queue_data.append((put_method, odoo.env[self._source_name].read(ids, self._source_fields)))
 
     def put(self, data):
         data = self.transform(data)
@@ -59,7 +59,6 @@ class OdooJob(Job):
         return True
 
     def transform(self, data):
-        print('PASS HERE') # TODO
         return data
 
     def _generic_transform(self, odoo, read_data):
@@ -73,6 +72,7 @@ class OdooJob(Job):
             line = []
             for f in fields:
                 if f == 'id':
+                    record[f] = Str(record[f]).to_code().lower()
                     line.append('__migration__.%s_%s' % (Str(self._source_name).dot_to_underscore(), record[f]))
                     continue
                 if IS.iterable(record[f]) and len(record[f]) == 2:

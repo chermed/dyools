@@ -10,8 +10,6 @@ logger = logging.getLogger(__name__)
 class Queue(object):
     def __init__(self, maxsize=0):
         self._stop = False
-        self._data = {}
-        self._to_send = {}
         self._py_queue = pyQueue(maxsize=maxsize)
 
     def push(self, index):
@@ -26,44 +24,27 @@ class Queue(object):
         except:
             return default
 
-    def add(self, priority, threads, total):
-        self._to_send[priority] = [threads, total]
-
-    def append(self, priority, put_method, item):
-        self._data.setdefault(priority, [])
-        self._data[priority].append([put_method, item])
-
-    def remove(self, priority):
-        self._data.pop(priority)
-
     def stop(self, wait=2):
         time.sleep(wait)
         self._stop = True
 
     def start(self):
         logger.info('queue: processing is started')
-        last_index = 0
         while True:
-            index = self.get_next_index(default=0)
-            if index:
-                if last_index and index > last_index:
-                    del self._to_send[index]
-                    del self._data[index]
-                last_index = index
-                jobs = self._data[index]
-                queue_threads, len_queue_priority = self._to_send[index]
-                queue_threads = min([queue_threads, len_queue_priority])
-                logger.info('queue: start to process priority=%s threads=%s',index, queue_threads)
+            queue_data = self.get_next_index(default=0)
+            if queue_data:
+                len_queue_data = len(queue_data)
+                logger.info('queue: start to process datas threads=%s',len_queue_data)
                 tab = []
-                for i in range(queue_threads):
-                    put_method, data = jobs[i]
+                for i in range(len_queue_data):
+                    put_method, job_data = queue_data[i]
                     i += 1
-                    t = Thread(target=put_method, args=(data,))
+                    t = Thread(target=put_method, args=(job_data,))
                     t.start()
                     tab.append(t)
                 for t in tab:
                     t.join()
-                logger.info('queue: end portion of the priority %s', index)
-            if not index and self._stop:
+                logger.info('queue: end portion from %s threads', len_queue_data)
+            if not queue_data and self._stop:
                 logger.info('queue: receive stop signal')
                 break

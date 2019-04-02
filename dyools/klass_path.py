@@ -92,6 +92,7 @@ class Path(object):
     def create_dir(cls, path):
         if not os.path.isdir(path):
             os.makedirs(path)
+        return path
 
     @classmethod
     def clean_dir(cls, path):

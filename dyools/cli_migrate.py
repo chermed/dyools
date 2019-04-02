@@ -9,9 +9,10 @@ from threading import Thread
 
 import click
 
-from .klass_path import Path
 from .klass_convert import Convert
+from .klass_date import Date
 from .klass_operator import Operator
+from .klass_path import Path
 from .klass_queue import Queue
 from .klass_str import Str
 from .klass_yaml_config import YamlConfig
@@ -121,6 +122,7 @@ def cli_migrate(ctx, logfile, config, log_level, start, stop, select):
     """Command line Interface for migration"""
     time_start = time.time()
     root_path = os.path.dirname(config)
+    root_path = Path.create_dir(os.path.join(root_path, 'output', Date(fmt=Date.DATETIME_HASH_FORMAT).to_str()))
     os.chdir(root_path)
     yaml = YamlConfig(config)
     logger = logging.getLogger()
@@ -142,31 +144,32 @@ def cli_migrate(ctx, logfile, config, log_level, start, stop, select):
     __load_connectors(logger, config, yaml, context)
     jobs, priorities = __get_jobs_priorities(logger, config, yaml, context, select, start, stop)
 
-    queue = Queue(maxsize=20)
+    queue = Queue(maxsize=4)
     send_thread = Thread(target=queue.start, args=())
     send_thread.start()
     len_priorities = len(priorities)
     for i, (queue_priority, queue_threads) in enumerate(priorities.items(), 1):
         logger.info('receiver: global priorities progression %s/%s', i, len_priorities)
         len_queue_priority = len(jobs[queue_priority])
-        queue.add(queue_priority, queue_threads, len_queue_priority)
         queue_threads = min([queue_threads, len_queue_priority])
         index = 0
         while index < len_queue_priority:
-            logger.info('receiver: stage priority=%s %s-%s/%s', queue_priority, index, queue_threads + index,
+            logger.info('receiver: stage priority=%s threads=%s %s-%s/%s', queue_priority, queue_threads, index,
+                        queue_threads + index,
                         len_queue_priority)
+            queue_data = []
             tab = []
             for i in range(queue_threads):
                 priority, threads, get_method, put_method, job = jobs[queue_priority][index]
                 index += 1
-                t = Thread(target=get_method, args=(put_method, queue, priority))
+                t = Thread(target=get_method, args=(put_method, queue_data))
                 t.start()
                 tab.append(t)
             for t in tab:
                 t.join()
             queue_threads = min([queue_threads, len(jobs[queue_priority][index:])])
             logger.info('receiver: current queue size=%s', queue.qsize())
-            queue.push(queue_priority)
+            queue.push(queue_data)
     queue.stop()
     send_thread.join()
     logger.info('all: migration is completed [time=%s] [time=%s]',
