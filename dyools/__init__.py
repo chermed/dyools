@@ -9,7 +9,7 @@ from .klass_odoo_connector import OdooConnector
 from .klass_consumer import Consumer
 from .klass_convert import Convert
 from .klass_csv_connector import CsvConnector
-from .klass_csv_job import CsvJob
+from .klass_csv_job import CsvJobExtractor
 from .klass_data import Data
 from .klass_date import Date
 from .klass_debug import log
@@ -26,7 +26,7 @@ from .klass_odoo_rpc import RPC
 from .klass_operator import Operator
 from .klass_path import Path
 from .klass_print import Print
-from .klass_queue import Queue
+from .klass_queue import Queue, Pipeline
 from .klass_serie import Serie
 from .klass_sftp import SFTP
 from .klass_str import Str

@@ -49,7 +49,7 @@ class JobLoaderBase(JobAbstract, metaclass=abc.ABCMeta):
 class JobExtractorAbstract(JobExtractorBase, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
-    def extract(self, transform_method, load_method, queue_data):
+    def extract(self, methods, queued_data, pool):
         pass
 
     @abc.abstractmethod
@@ -61,12 +61,12 @@ class JobLoaderAbstract(JobLoaderBase, metaclass=abc.ABCMeta):
     _destination = False
 
     @abc.abstractmethod
-    def load(self, error_method, queued_data):
+    def load(self, methods, queued_data, pool):
         pass
 
 
 class JobTransformatorAbstract(JobExtractorBase, JobLoaderBase, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
-    def transform(self, data):
+    def transform(self, methods, queued_data, pool):
         pass

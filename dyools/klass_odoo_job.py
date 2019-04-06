@@ -20,12 +20,11 @@ class OdooJobExtractor(JobExtractorAbstract):
             raise ValueError('Please define the source fields, static variable: _source_fields')
         super(OdooJobExtractor, self).__init__(**kwargs)
 
-    def extract(self, methods, queue_data):
+    def extract(self, methods, _, pool):
         odoo = self.get_source()
         ids = odoo.env[self._source_name].search(self.domain, offset=self.offset, limit=self.limit)
         data = odoo.env[self._source_name].read(ids, self._source_fields)
-        print('EXTRACT', data)
-        queue_data.append((methods, data))
+        pool.append((methods, data))
 
     def count(self):
         return self.get_source().env[self._source_name].search_count(self.domain)
@@ -42,8 +41,7 @@ class OdooJobLoader(JobLoaderAbstract):
             raise ValueError('Please define the destination fields, static variable: _destination_fields')
         super(OdooJobLoader, self).__init__(**kwargs)
 
-    def load(self, methods, queued_data):
-        print('LOAD', queued_data)
+    def load(self, methods, queued_data, pool):
         odoo = self.get_destination()
         if self.context.get('primary_keys'):
             logger.info('sender: odoojob use create/write based on fields = %s' % self.context['primary_keys'])
@@ -55,14 +53,14 @@ class OdooJobLoader(JobLoaderAbstract):
                 else:
                     ids = odoo.env[self._destination_name].create(record)
                 if not ids:
-                    return False
+                    pool.append((methods, False))
         else:
             fields, data = self._generic_transform(odoo, queued_data)
             logger.info('sender: odoojob use load model=%s fields=%s', self._destination_name, fields)
             logger.debug('sender: odoojob call load with fields=%s data=%s', fields, data)
             if not odoo.env[self._destination_name].load(fields, data):
-                return False
-        queued_data.append((methods, True))
+                pool.append((methods, False))
+        pool.append((methods, True))
 
     def _generic_transform(self, odoo, read_data):
         ffield = odoo.env[self._destination_name].fields_get()
@@ -94,6 +92,5 @@ class OdooJobLoader(JobLoaderAbstract):
 
 class OdooJobTransformator(JobTransformatorAbstract):
 
-    def transform(self, methods, queued_data):
-        print('TRANSFORM>>>', methods, queued_data)
-        return queued_data.append((methods, queued_data))
+    def transform(self, methods, queued_data, pool):
+        return pool.append((methods, queued_data))
