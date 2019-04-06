@@ -60,7 +60,7 @@ class Path(object):
     @classmethod
     def create_file(cls, path, content, eof=0):
         def _erase_data(_path, _content):
-            with open(_path, 'w+') as f:
+            with open(_path, 'wb+') as f:
                 f.write(_content)
 
         if eof:
@@ -70,7 +70,7 @@ class Path(object):
             cls.create_dir(ddir)
             _erase_data(path, content)
         else:
-            with open(path, 'r') as f:
+            with open(path, 'rb') as f:
                 c = f.read()
             if c != content:
                 _erase_data(path, content)
@@ -146,13 +146,29 @@ class Path(object):
             return list(matches)
 
     @classmethod
-    def find_file_path(cls, path, home=False):
+    def find_file_path(cls, path, home=False, raise_if_not_found=False):
         full_path = path
         if not os.path.isfile(path):
             if home:
                 if os.path.isfile(home):
                     home = os.path.dirname(home)
                 full_path = os.path.join(home, path)
+        if raise_if_not_found and not os.path.isfile(full_path):
+            raise FileNotFoundError('the path [%s] is not a file found' % full_path)
+        return full_path
+
+    @classmethod
+    def find_dir_path(cls, path, home=False, raise_if_not_found=False):
+        full_path = path
+        if not os.path.isfile(full_path):
+            full_path = os.path.dirname(full_path)
+        if not os.path.isdir(full_path):
+            if home:
+                if os.path.isfile(home):
+                    home = os.path.dirname(home)
+                full_path = os.path.join(home, path)
+        if raise_if_not_found and not os.path.isdir(full_path):
+            raise NotADirectoryError('the path [%s] is not a directory' % full_path)
         return full_path
 
     @classmethod

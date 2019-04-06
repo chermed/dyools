@@ -38,6 +38,7 @@ setup(
         'psutil',
         'faker',
         'lxml',
+        'polib',
 
     ],
     setup_requires=['pytest-runner', ],
@@ -48,7 +49,8 @@ setup(
         rpc=dyools:cli_rpc
         tool=dyools:cli_tool
         xml=dyools:cli_xml
-        migrate=dyools:cli_migrate
+        etl=dyools:cli_etl
+        po=dyools:cli_po
     ''',
 
 )

@@ -2,12 +2,12 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import logging
 
-from .klass_odoo_job import OdooJob
+from .klass_odoo_job import OdooJobExtractor
 
 logger = logging.getLogger(__name__)
 
 
-class CsvJob(OdooJob):
+class CsvJob(OdooJobExtractor):
 
     def get(self, put_method, queue_data):
         fcsv = self.get_source()

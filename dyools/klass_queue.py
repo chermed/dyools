@@ -1,50 +1,42 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import logging
-import time
-from queue import Queue as pyQueue
+from queue import Queue
 from threading import Thread
 
 logger = logging.getLogger(__name__)
 
-class Queue(object):
-    def __init__(self, maxsize=0):
-        self._stop = False
-        self._py_queue = pyQueue(maxsize=maxsize)
 
-    def push(self, index):
-        self._py_queue.put(index)
-
-    def qsize(self):
-        return self._py_queue.qsize()
-
-    def get_next_index(self, timeout=1, default=0):
-        try:
-            return self._py_queue.get(timeout=timeout)
-        except:
-            return default
-
-    def stop(self, wait=2):
-        time.sleep(wait)
-        self._stop = True
+class Queue(Queue):
+    def __init__(self, name, maxsize=0, output_queue=None):
+        super(Queue, self).__init__(maxsize=maxsize)
+        self.name = name
+        self.output_queue = output_queue
 
     def start(self):
-        logger.info('queue: processing is started')
+        logger.info('queue: name=%s processing is started, output name=%s', self.name,
+                    getattr(self.output_queue, 'name', None))
         while True:
-            queue_data = self.get_next_index(default=0)
-            if queue_data:
-                len_queue_data = len(queue_data)
-                logger.info('queue: start to process datas threads=%s',len_queue_data)
-                tab = []
-                for i in range(len_queue_data):
-                    put_method, job_data = queue_data[i]
-                    i += 1
-                    t = Thread(target=put_method, args=(job_data,))
-                    t.start()
-                    tab.append(t)
-                for t in tab:
-                    t.join()
-                logger.info('queue: end portion from %s threads', len_queue_data)
-            if not queue_data and self._stop:
-                logger.info('queue: receive stop signal')
+            received_data = self.get()
+            if received_data is None:
+                logger.info('queue: name=%s receive stop signal', self.name)
+                if self.output_queue:
+                    self.output_queue.put(received_data)
                 break
+            len_received_data = len(received_data)
+            logger.info('queue: name=%s start to process datas threads=%s', self.name, len_received_data)
+            tab = []
+            queue_data = []
+            for i in range(len_received_data):
+                methods, data = received_data[i]
+                print(self.name, methods, data)
+                i += 1
+                t = Thread(target=methods[0], args=(methods[1:], queue_data))
+                t.start()
+                tab.append(t)
+            self.task_done()
+            for t in tab:
+                t.join()
+            if self.output_queue :
+                self.output_queue.put(queue_data)
+            logger.info('queue: name=%s end portion from %s threads', self.name, len_received_data)

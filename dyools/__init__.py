@@ -1,5 +1,6 @@
 from .cli_rpc import cli_rpc
-from .cli_migrate import cli_migrate
+from .cli_etl import cli_etl
+from .cli_po import cli_po
 from .cli_tool import cli_tool
 from .cli_ws_agent import cli_ws_agent
 from .cli_xml import cli_xml
@@ -16,10 +17,10 @@ from .klass_df import DF
 from .klass_eval import Eval
 from .klass_inspect import Inspect
 from .klass_is import IS
-from .klass_job import Job
+from .klass_job import JobExtractorAbstract, JobLoaderAbstract, JobTransformatorAbstract
 from .klass_logger import Logger
 from .klass_odoo_env import Env
-from .klass_odoo_job import OdooJob
+from .klass_odoo_job import OdooJobExtractor, OdooJobLoader, OdooJobTransformator
 from .klass_odoo_mixin import Mixin
 from .klass_odoo_rpc import RPC
 from .klass_operator import Operator

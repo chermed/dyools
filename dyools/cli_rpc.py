@@ -1,5 +1,6 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import base64
 import code
 import os
 import signal
@@ -21,6 +22,7 @@ from .klass_xml import XML
 from .klass_yaml_config import YamlConfig
 
 ORDER = dict(id=1, display_name=2, name=2, key=3, user_id=4, partner_id=5, product_id=6)
+LANGS = dict(fr='fr_FR', fr_FR='fr_FR', en='en_US', en_US='en_US')
 
 
 class ConfigEnum(object):
@@ -430,6 +432,7 @@ def __db_drop(ctx, grep):
         for db_name in databases:
             rpc.drop_db(db_name)
 
+
 @cli_rpc.command('db_create')
 @click.argument('database', required=False)
 @click.option('--with-demo', is_flag=True, default=False)
@@ -439,6 +442,7 @@ def __db_create(ctx, database, with_demo, language):
     """Create a database"""
     rpc = ctx.obj['action_connect']()
     rpc.create_db(database or rpc.dbname, with_demo, language)
+
 
 ######################################################################
 ###
@@ -730,3 +734,72 @@ def __load(ctx, datas, assets, start, stop):
     """Process yaml files"""
     rpc = ctx.obj['action_login']()
     rpc.load_yaml(path=datas, assets=assets, start=start, stop=stop, auto_commit=False)
+
+
+######################################################################
+###
+###                 TRANSLATION MANAGEMENT
+###
+#######################################################################
+
+@cli_rpc.command('po_export')
+@click.argument('addons', type=click.STRING, required=True)
+@click.option('--lang', type=click.STRING, default='fr', required=True)
+@click.option('--output', '-o', type=click.Path(
+    exists=True,
+    file_okay=False,
+    dir_okay=True,
+    readable=True,
+    resolve_path=True
+), default=os.getcwd())
+@click.pass_context
+def __po_export(ctx, addons, output, lang):
+    """Process yaml files"""
+    global LANGS
+    dest_file = os.path.join(output, '{}.po'.format(lang))
+    rpc = ctx.obj['action_login']()
+    export_model = rpc['base.language.export']
+    module_model = rpc['ir.module.module']
+    module_ids = module_model.search([('name', 'in', Operator.split_and_flat(',', addons))])
+    if not module_ids:
+        raise ValueError('The addons not found in the database')
+    export_id = export_model.create({
+        'lang': LANGS[lang],
+        'format': 'po',
+        'modules': [(6, 0, module_ids)],
+    })
+    export_record = export_model.browse(export_id)
+    export_record.act_getfile()
+    data = export_record.read(['data'])[0]['data']
+    Path.create_file(path=dest_file, content=base64.decodestring(bytes(data, 'utf-8')))
+    Print.success('File: %s' % dest_file)
+
+
+@cli_rpc.command('po_import')
+@click.argument('po_file', type=click.Path(
+    exists=True,
+    file_okay=True,
+    dir_okay=False,
+    readable=True,
+    resolve_path=True
+), required=True, )
+@click.option('--name', type=click.STRING, default='Français', required=True)
+@click.option('--lang', type=click.STRING, default='fr', required=True)
+@click.option('--overwrite', is_flag=True, default=False)
+@click.pass_context
+def __po_import(ctx, po_file, name, lang, overwrite):
+    """Process yaml files"""
+    global LANGS
+    rpc = ctx.obj['action_login']()
+    import_model = rpc['base.language.import']
+    with open(po_file, 'rb') as f:
+        import_id = import_model.create({
+            'name': name,
+            'code': LANGS[lang],
+            'overwrite': overwrite,
+            'filename': os.path.basename(po_file),
+            'data': base64.encodestring(f.read()).decode('utf-8'),
+        })
+        import_record = import_model.browse(import_id)
+        import_record.import_lang()
+    Print.success('The file: %s is loaded' % po_file)
