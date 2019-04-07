@@ -90,8 +90,7 @@ class Path(object):
 
     @classmethod
     def create_dir(cls, path):
-        if not os.path.isdir(path):
-            os.makedirs(path)
+        os.makedirs(path, exist_ok=True)
         return path
 
     @classmethod
@@ -108,6 +107,21 @@ class Path(object):
     def delete_dir(cls, path):
         if os.path.exists(path):
             shutil.rmtree(path)
+
+    @classmethod
+    def clean_empty_dirs(cls, path):
+        if os.path.isfile(path):
+            path = os.path.dirname(path)
+        dirs_to_remove = []
+        while True:
+            for root, dirnames, filenames in os.walk(path):
+                if not dirnames and not filenames:
+                    dirs_to_remove.append(root)
+            if not dirs_to_remove:
+                break
+            for dir_to_remove in dirs_to_remove:
+                cls.delete_dir(dir_to_remove)
+            dirs_to_remove = []
 
     @classmethod
     def size_str(cls, path, unit='mb'):

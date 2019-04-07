@@ -1,16 +1,11 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
-import base64 as pkg_base64
-import os
-import random as pkg_random
-import string as pkg_string
-import uuid as pkg_uuid
-
 import click
 from faker import Faker
 
 from .klass_data import Data
 from .klass_print import Print
+from .klass_random import Random
 
 
 @click.group()
@@ -23,20 +18,28 @@ def cli_tool():
 @click.option('--nbr', '-n', type=click.INT, default=1, required=False)
 @click.option('--uuid', is_flag=True, type=click.BOOL, default=False, required=False)
 @click.option('--base64', is_flag=True, type=click.BOOL, default=False, required=False)
-def __random(length, nbr, uuid, base64):
+@click.option('--alpha', is_flag=True, type=click.BOOL, default=False, required=False)
+@click.option('--digits', is_flag=True, type=click.BOOL, default=False, required=False)
+@click.option('--alphanum', is_flag=True, type=click.BOOL, default=False, required=False)
+def __random(length, nbr, uuid, base64, alpha, digits, alphanum):
     """Generate random strings"""
     Print.info('Some random strings')
+    if not any([uuid, base64, alpha, digits, alphanum]):
+        uuid = base64 = alpha = digits = alphanum = True
     tab = []
     for i in range(nbr):
+        i += 1
         if uuid:
-            generated_string = str(pkg_uuid.uuid1())
-        elif base64:
-            generated_string = pkg_base64.b64encode(os.urandom(length))
-        else:
-            generated_string = ''.join(
-                pkg_random.choice(pkg_string.ascii_letters + pkg_string.digits) for _ in range(length))
-        tab.append([generated_string])
-    Data(tab, header=['String']).show()
+            tab.append([i, 'uuid', Random.uuid()])
+        if base64:
+            tab.append([i, 'base64', Random.base64(length)])
+        if alpha:
+            tab.append([i, 'alpha', Random.alpha(length)])
+        if digits:
+            tab.append([i, 'digits', Random.digits(length)])
+        if alphanum:
+            tab.append([i, 'alphanum', Random.alphanum(length)])
+    Data(tab, header=['Index', 'Name', 'Value']).show()
 
 
 @cli_tool.command('fake')

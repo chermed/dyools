@@ -123,6 +123,14 @@ class Data(object):
             x.add_row([t(x) for x in item])
         return x
 
+    def get_html(self, **kwargs):
+        header = self.get_default_header()
+        x = PrettyTable()
+        x.field_names = header
+        for i, item in enumerate(self.get_lines(), 1):
+            x.add_row(item)
+        return x.get_html_string(**kwargs)
+
     def to_list(self):
         res = []
         if self.header:

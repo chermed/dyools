@@ -35,9 +35,10 @@ class Queue(pyQueue):
             pool = []
             for i in range(len_received_data):
                 methods, data = received_data[i]
-                t = Thread(target=methods[0], args=(methods[1:], data, pool))
-                t.start()
-                tab.append(t)
+                if data:
+                    t = Thread(target=methods[0], args=(methods[1:], data, pool))
+                    t.start()
+                    tab.append(t)
             self.task_done()
             for t in tab:
                 t.join()
@@ -68,7 +69,7 @@ class Pipeline(object):
 
     def put(self, data):
         if not self._list:
-            raise ValueError('add some queues before put on pipeline')
+            raise ValueError('add some queues before putting elements to pipeline')
         self._list[0].put(data)
         if data is None:
             for t in self._threads:

@@ -79,9 +79,11 @@ def __get_jobs_priorities(logger, config, yaml, _params, context, select, start,
         get_klass_method = job.pop('extract')
         load_klass_method = job.pop('load')
         transform_klass_method = job.pop('transform')
+        error_klass_method = job.pop('error')
         [e_path, e_klass], e_method = get_klass_method.split('::'), 'extract'
         [l_path, l_klass], l_method = load_klass_method.split('::'), 'load'
         [t_path, t_klass], t_method = transform_klass_method.split('::'), 'transform'
+        [r_path, r_klass], r_method = error_klass_method.split('::'), 'error'
         limit = job.get('limit', 0)
         offset = job.get('offset', 0)
         domain = job.get('domain', [])
@@ -89,6 +91,7 @@ def __get_jobs_priorities(logger, config, yaml, _params, context, select, start,
         __execute(logger, config, e_path, ctx)
         __execute(logger, config, l_path, ctx)
         __execute(logger, config, t_path, ctx)
+        __execute(logger, config, r_path, ctx)
         job_ctx = context.copy()
         job_ctx.update(_params)
         job_ctx.update(job)
@@ -108,12 +111,14 @@ def __get_jobs_priorities(logger, config, yaml, _params, context, select, start,
                 extract_method = getattr(ctx[e_klass](**job_ctx), e_method)
                 transform_method = getattr(ctx[t_klass](**job_ctx), t_method)
                 load_method = getattr(ctx[l_klass](**job_ctx), l_method)
-                result[priority].append([priority, threads, extract_method, transform_method, load_method, job])
+                error_method = getattr(ctx[r_klass](**job_ctx), r_method)
+                result[priority].append([extract_method, transform_method, load_method, error_method])
         else:
             extract_method = getattr(ctx[e_klass](**job_ctx), e_method)
             transform_method = getattr(ctx[t_klass](**job_ctx), t_method)
             load_method = getattr(ctx[l_klass](**job_ctx), l_method)
-            result[priority].append([priority, threads, extract_method, transform_method, load_method, job])
+            error_method = getattr(ctx[r_klass](**job_ctx), r_method)
+            result[priority].append([extract_method, transform_method, load_method, error_method])
     return result, priorities
 
 
@@ -138,7 +143,7 @@ def cli_etl(logfile, config, params, log_level, start, stop, select, tags):
     """Command line Interface for ETL"""
     time_start = time.time()
     root_path = os.path.dirname(config)
-    root_path = Path.create_dir(os.path.join(root_path, 'output', Date(fmt=Date.DATETIME_HASH_FORMAT).to_str()))
+    error_path = Path.create_dir(os.path.join(root_path, 'output', Date(fmt=Date.DATETIME_HASH_FORMAT).to_str()))
     os.chdir(root_path)
     if params:
         params = Path.find_file_path(params, config, raise_if_not_found=True)
@@ -160,13 +165,15 @@ def cli_etl(logfile, config, params, log_level, start, stop, select, tags):
         'logger': logger,
         'config': config,
         'yaml': yaml,
+        'error_path': error_path,
     }
     __load_connectors(logger, config, yaml, params, context)
     jobs, priorities = __get_jobs_priorities(logger, config, yaml, params, context, select, start, stop, tags)
     pipeline = Pipeline()
     pipeline.add_worker(name='Extract', maxsize=4)
     pipeline.add_worker(name='Transform', maxsize=4)
-    pipeline.add_worker(name='Send', maxsize=4)
+    pipeline.add_worker(name='Load', maxsize=4)
+    pipeline.add_worker(name='Error', maxsize=1)
     pipeline.start()
     len_priorities = len(priorities)
     for i, (queue_priority, queue_threads) in enumerate(priorities.items(), 1):
@@ -180,13 +187,14 @@ def cli_etl(logfile, config, params, log_level, start, stop, select, tags):
                         len_queue_priority)
             queue_data = []
             for i in range(queue_threads):
-                priority, threads, extract_method, transform_method, load_method, job = jobs[queue_priority][index]
+                queue_data.append((jobs[queue_priority][index], True))
                 index += 1
-                methods = [extract_method, transform_method, load_method]
-                queue_data.append((methods, []))
-            queue_threads = min([queue_threads, len(jobs[queue_priority][index:])])
             pipeline.put(queue_data)
+            queue_threads = min([queue_threads, len(jobs[queue_priority][index:])])
     pipeline.stop()
-    logger.info('all: migration is completed [time=%s] [time=%s]',
+    logger.info('all: migration completed [time=%s] [time=%s]',
                 Str(Convert.time(time.time() - time_start, r=2), suffix='seconds'),
                 Str(Convert.time(time.time() - time_start, to='M', r=2), suffix='minutes'))
+    Path.clean_empty_dirs(root_path)
+    if os.path.isdir(root_path):
+        logger.info('all: output [%s]', root_path)

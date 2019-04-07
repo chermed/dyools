@@ -5,7 +5,7 @@ from setuptools import setup
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, 'README.rst')).read()
 
-version = '0.13.1'
+version = '0.14.0'
 
 setup(
     name='dyools',

@@ -70,3 +70,10 @@ class JobTransformatorAbstract(JobExtractorBase, JobLoaderBase, metaclass=abc.AB
     @abc.abstractmethod
     def transform(self, methods, queued_data, pool):
         pass
+
+
+class JobErrorAbstract(JobExtractorBase, JobLoaderBase, metaclass=abc.ABCMeta):
+
+    @abc.abstractmethod
+    def error(self, methods, queued_data, pool):
+        pass

@@ -1,10 +1,13 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import logging
+import os
 
 from .klass_is import IS
-from .klass_job import JobExtractorAbstract, JobLoaderAbstract, JobTransformatorAbstract
+from .klass_job import JobExtractorAbstract, JobLoaderAbstract, JobTransformatorAbstract, JobErrorAbstract
+from .klass_random import Random
 from .klass_str import Str
+from .klass_yaml_config import YamlConfig
 
 logger = logging.getLogger(__name__)
 
@@ -49,18 +52,22 @@ class OdooJobLoader(JobLoaderAbstract):
                 domain = [(pk, '=', record[pk]) for pk in self.context['primary_keys']]
                 ids = odoo.env[self._destination_name].search(domain)
                 if ids:
-                    odoo.env[self._destination_name].write(ids, record)
+                    try:
+                        odoo.env[self._destination_name].write(ids, record)
+                    except:
+                        pool.append((methods, dict(method='write', model=self._destination_name, ids=ids, vals=record)))
                 else:
-                    ids = odoo.env[self._destination_name].create(record)
-                if not ids:
-                    pool.append((methods, False))
+                    try:
+                        odoo.env[self._destination_name].create(record)
+                    except:
+                        pool.append((methods, dict(method='create', model=self._destination_name, vals=record)))
         else:
             fields, data = self._generic_transform(odoo, queued_data)
             logger.info('sender: odoojob use load model=%s fields=%s', self._destination_name, fields)
             logger.debug('sender: odoojob call load with fields=%s data=%s', fields, data)
-            if not odoo.env[self._destination_name].load(fields, data):
-                pool.append((methods, False))
-        pool.append((methods, True))
+            result = odoo.env[self._destination_name].load(fields, data)
+            if not result.get('ids'):
+                pool.append((methods, dict(method='load', model=self._destination_name, fields=fields, data=data)))
 
     def _generic_transform(self, odoo, read_data):
         ffield = odoo.env[self._destination_name].fields_get()
@@ -94,3 +101,13 @@ class OdooJobTransformator(JobTransformatorAbstract):
 
     def transform(self, methods, queued_data, pool):
         return pool.append((methods, queued_data))
+
+
+class OdooJobError(JobErrorAbstract):
+
+    def error(self, methods, queued_data, pool):
+        path = os.path.join(self.error_path, Str(queued_data.get('model')).dot_to_underscore(), Random.uuid() + '.yml')
+        yaml = YamlConfig(path, create_if_not_exists=True)
+        yaml.set_data(queued_data)
+        yaml.dump()
+        self.logger.error(queued_data)

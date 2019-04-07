@@ -36,6 +36,11 @@ class YamlConfig(object):
         with open(self.path, 'w+') as f:
             f.write(yaml.dump(self.__data, default_flow_style=False, allow_unicode=True))
 
+    def set_data(self, data):
+        if not isinstance(data, dict):
+            data = {'root': data}
+        self.__data = data
+
     def get_data(self):
         return self.__data
 
