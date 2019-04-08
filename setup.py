@@ -5,7 +5,7 @@ from setuptools import setup
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, 'README.rst')).read()
 
-version = '0.14.0'
+version = '0.15.0'
 
 setup(
     name='dyools',
@@ -39,6 +39,9 @@ setup(
         'faker',
         'lxml',
         'polib',
+        'terminaltables',
+        'colorclass',
+        'dateparser',
 
     ],
     setup_requires=['pytest-runner', ],
@@ -51,6 +54,9 @@ setup(
         xml=dyools:cli_xml
         etl=dyools:cli_etl
         po=dyools:cli_po
+        sign=dyools:cli_sign
+        todo=dyools:cli_todo
+        job=dyools:cli_job
     ''',
 
 )

@@ -1,6 +1,9 @@
 from .cli_etl import cli_etl
+from .cli_job import cli_job
 from .cli_po import cli_po
 from .cli_rpc import cli_rpc
+from .cli_todo import cli_todo
+from .cli_sign import cli_sign
 from .cli_tool import cli_tool
 from .cli_ws_agent import cli_ws_agent
 from .cli_xml import cli_xml
@@ -36,5 +39,5 @@ from .klass_tool import Tool
 from .klass_ws import WS
 from .klass_xlsreader import XlsReader
 from .klass_xlswriter import XlsWriter
-from .klass_xml import XML
+from .klass_xml import Xml
 from .klass_yaml_config import YamlConfig

@@ -3,7 +3,30 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 from lxml import etree
 
 
-class XML(object):
+class XmlNode(object):
+    def __init__(self, node):
+        if not isinstance(node, list):
+            node = [node]
+        self.__nodes = node
+
+    def add(self, node):
+        if not isinstance(node, list):
+            node = [node]
+        self.__nodes.extend(node)
+
+    def attrib(self, attr, value):
+        for node in self.__nodes:
+            node.attrib[attr] = value
+
+    @property
+    def nodes(self):
+        return self.__nodes
+
+    def __iter__(self):
+        return iter(self.__nodes)
+
+
+class Xml(object):
     SEPARATOR = '=' * 10
 
     def __init__(self, arch, separator=False):
@@ -48,7 +71,10 @@ class XML(object):
         for xpath in self.get_xpath_expr(*tags, **attrs):
             for node in self.root.xpath(xpath):
                 nodes.append(node)
-        return nodes
+        return XmlNode(nodes)
+
+    def nodes(self, *tags, **attrs):
+        return self._xpath(*tags, **attrs)
 
     def all_nodes(self):
         return [node for node in self.root.xpath('//*')]
@@ -121,13 +147,23 @@ class XML(object):
                 result.append(['Architecture', self.pretty(node).strip()])
         return result
 
-    def pretty(self, node=None):
+    def _to_string(self, node=None, pretty_print=False):
         if node is None:
             node = self.root
         try:
-            return etree.tostring(node, pretty_print=True, encoding='utf-8').decode('utf-8')
+            return etree.tostring(node, pretty_print=pretty_print, encoding='utf-8').decode('utf-8')
         except:
-            return etree.tostring(node)
+            return etree.tostring(node, pretty_print=pretty_print, encoding='utf-8')
+
+    def to_string(self, node=None):
+        if node is None:
+            node = self.root
+        return self._to_string(node, pretty_print=False)
+
+    def pretty(self, node=None):
+        if node is None:
+            node = self.root
+        return self._to_string(node, pretty_print=True)
 
     def __len__(self):
         return len(self.all_nodes())

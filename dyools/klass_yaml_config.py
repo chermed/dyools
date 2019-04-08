@@ -93,6 +93,19 @@ class YamlConfig(object):
         for item in items:
             self.__data.pop(item)
 
+    def get_list(self, **kwargs):
+        if kwargs:
+            items = self.get(**kwargs)
+        else:
+            items = self.__data
+        res = []
+        for k, v in items.items():
+            d = dict(name=k)
+            if isinstance(v, dict):
+                d.update(v)
+            res.append(d)
+        return res
+
     def switch(self, name, attr, value, inverse):
         for key, values in self.__data.items():
             for k, v in values.items():

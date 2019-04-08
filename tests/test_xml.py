@@ -366,29 +366,29 @@ class TestXML(TestCase):
         """
 
     def test_load_data(self):
-        from dyools import XML
+        from dyools import Xml
         arch = self.small_xml
-        self.assertIsNotNone(XML(arch))
-        self.assertEqual(XML(arch).xpath('extra'), [b'<extra>1</extra>', b'<extra>2</extra>'])
-        self.assertEqual(XML(arch).xpath(name='phone'), [b'<field name="phone"/>'])
-        self.assertEqual(XML(arch).xpath(name='email'),
+        self.assertIsNotNone(Xml(arch))
+        self.assertEqual(Xml(arch).xpath('extra'), [b'<extra>1</extra>', b'<extra>2</extra>'])
+        self.assertEqual(Xml(arch).xpath(name='phone'), [b'<field name="phone"/>'])
+        self.assertEqual(Xml(arch).xpath(name='email'),
                          [b'<field name="email"/>', b'<field name="email" widget="email"/>'])
-        self.assertEqual(XML(arch).xpath('field', name='email'),
+        self.assertEqual(Xml(arch).xpath('field', name='email'),
                          [b'<field name="email"/>', b'<field name="email" widget="email"/>'])
-        self.assertEqual(XML(arch).xpath('field', name='email', widget='email'),
+        self.assertEqual(Xml(arch).xpath('field', name='email', widget='email'),
                          [b'<field name="email" widget="email"/>'])
 
     def test_xml_separator_1(self):
-        from dyools import XML
+        from dyools import Xml
         arch = self.separator_xml1
-        self.assertEqual(len(XML(arch, separator='====').all_nodes()), 1)
+        self.assertEqual(len(Xml(arch, separator='====').all_nodes()), 1)
 
     def test_xml_separator_2(self):
-        from dyools import XML
+        from dyools import Xml
         arch = self.separator_xml2
-        self.assertEqual(len(XML(arch, separator='====').all_nodes()), 6)
+        self.assertEqual(len(Xml(arch, separator='====').all_nodes()), 6)
 
     def test_xml_query(self):
-        from dyools import XML
-        xml = XML(self.big_xml)
+        from dyools import Xml
+        xml = Xml(self.big_xml)
 

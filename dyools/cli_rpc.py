@@ -18,7 +18,7 @@ from .klass_operator import Operator
 from .klass_path import Path
 from .klass_print import Print
 from .klass_tool import Tool
-from .klass_xml import XML
+from .klass_xml import Xml
 from .klass_yaml_config import YamlConfig
 
 ORDER = dict(id=1, display_name=2, name=2, key=3, user_id=4, partner_id=5, product_id=6)
@@ -615,9 +615,9 @@ def __arch(ctx, view):
         view = rpc.get_ir_ui_view([('id', '=', int(view))])
     else:
         view = rpc.xmlid_to_object(view)
-    Print.info(XML.SEPARATOR)
-    Print.info(XML(view.arch).pretty())
-    Print.info(XML.SEPARATOR)
+    Print.info(Xml.SEPARATOR)
+    Print.info(Xml(view.arch).pretty())
+    Print.info(Xml.SEPARATOR)
 
 
 @cli_rpc.command('combined')
@@ -631,9 +631,9 @@ def __combined(ctx, view):
     else:
         view = rpc.xmlid_to_object(view)
     xml = view.read_combined(['arch'])['arch']
-    Print.info(XML.SEPARATOR)
-    Print.info(XML(xml).pretty())
-    Print.info(XML.SEPARATOR)
+    Print.info(Xml.SEPARATOR)
+    Print.info(Xml(xml).pretty())
+    Print.info(Xml.SEPARATOR)
 
 
 ######################################################################
