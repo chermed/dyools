@@ -58,3 +58,25 @@ class TestStr(TestCase):
         self.assertEqual(Str('__name_LAST').dot_to_underscore(), '__name_LAST')
         self.assertEqual(Str('__name_LAST___').dot_to_underscore(), '__name_LAST___')
 
+    def test_get_number(self):
+        from dyools import Str
+        self.assertEqual(Str('_34_89__78__.__78').to_number(), 348978.78)
+        self.assertEqual(Str('_34e_89_e_78__._g_78').to_number(), 348978.78)
+        self.assertEqual(Str('_34e_89_e_78__._8g_78').get_first_number(), 34)
+        self.assertEqual(Str('_3.4e_89_e_78__._8g_78').get_first_number(), 3.4)
+        self.assertEqual(Str('_34e_89_e_78__._8g_78').get_last_number(), 78)
+        self.assertEqual(Str('_34e_89_e_78__._8g_7,8').get_last_number(), 7.8)
+
+    def test_to_range(self):
+        from dyools import Str
+        self.assertEqual(Str('>80').to_range(), (81, 99999))
+        self.assertEqual(Str('>=80').to_range(), (80, 99999))
+        self.assertEqual(Str('<80').to_range(), (0, 79))
+        self.assertEqual(Str('<=80').to_range(), (0, 80))
+        self.assertEqual(Str('  3 - 78').to_range(), (3, 78))
+        self.assertEqual(Str('  3,8 - 78').to_range(), (3.8, 78))
+        self.assertEqual(Str('  3.8 - 78').to_range(), (3.8, 78))
+        Str.MAX_NUMBER = 99
+        Str.MIN_NUMBER = 10
+        self.assertEqual(Str('>=80').to_range(), (80, 99))
+        self.assertEqual(Str('<=80').to_range(), (10, 80))

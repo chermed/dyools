@@ -5,6 +5,9 @@ import unicodedata
 
 
 class Str(object):
+    MIN_NUMBER = 0
+    MAX_NUMBER = 99999
+
     def __init__(self, arg, numeric=False, precision=2, prefix=False, suffix=False):
         self.arg = '{}'.format(arg)
         self.numeric = any([numeric, isinstance(arg, (int, float))])
@@ -80,6 +83,60 @@ class Str(object):
         txt = [c for c in unicodedata.normalize('NFD', txt) if unicodedata.category(c) != 'Mn']
         txt = ''.join(txt)
         return self.to_str(txt)
+
+    def to_number(self, ttype=float):
+        txt = self.arg.strip().replace(',', '.')
+        txt = [c for c in txt if c.isdigit() or c == '.']
+        txt = ''.join(txt)
+        return ttype(txt)
+
+    def get_first_number(self, ttype=float):
+        txt = self.arg.strip().replace(',', '.')
+        tmp = ''
+        for c in txt:
+            if c.isdigit() or c == '.':
+                tmp += c
+            elif tmp:
+                break
+        return ttype(tmp)
+
+    def get_last_number(self, ttype=float):
+        txt = self.arg[::-1].strip().replace(',', '.')
+        tmp = ''
+        for c in txt:
+            if c.isdigit() or c == '.':
+                tmp += c
+            elif tmp:
+                break
+        return ttype(tmp[::-1])
+
+    def to_range(self, ttype=float):
+        min_, max_ = self.MIN_NUMBER, self.MAX_NUMBER
+        txt = self.arg.strip().replace(' ', '')
+        if '>=' in txt:
+            splitted = txt.split('>=')
+            if len(splitted) > 1:
+                min_ = Str(splitted[1]).to_number(ttype=ttype)
+        elif '>' in txt:
+            splitted = txt.split('>')
+            if len(splitted) > 1:
+                min_ = Str(splitted[1]).to_number(ttype=ttype) + 1
+        elif '<=' in txt:
+            splitted = txt.split('<=')
+            if len(splitted) > 1:
+                max_ = Str(splitted[1]).to_number(ttype=ttype)
+        elif '<' in txt:
+            splitted = txt.split('<')
+            if len(splitted) > 1:
+                max_ = Str(splitted[1]).to_number(ttype=ttype) - 1
+        elif '-' in txt:
+            splitted = txt.split('-')
+            if len(splitted) > 1:
+                min_ = Str(splitted[0]).to_number(ttype=ttype)
+                max_ = Str(splitted[1]).to_number(ttype=ttype)
+        elif txt:
+            min_ = max_ = Str(txt).to_number(ttype=ttype)
+        return min_, max_
 
     def to_str(self, arg=None):
         if arg is None:
