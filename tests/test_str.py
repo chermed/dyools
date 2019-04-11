@@ -69,9 +69,12 @@ class TestStr(TestCase):
 
     def test_to_range(self):
         from dyools import Str
-        self.assertEqual(Str('>80').to_range(), (81, 99999))
+        self.assertEqual(Str('>80').to_range(ttype=int), (81, 99999))
+        self.assertEqual(Str('>80').to_range(), (80.01, 99999))
         self.assertEqual(Str('>=80').to_range(), (80, 99999))
-        self.assertEqual(Str('<80').to_range(), (0, 79))
+        self.assertEqual(Str('<80').to_range(ttype=float), (0, 79.99))
+        self.assertEqual(Str('<80').to_range(ttype=int), (0, 79))
+        self.assertEqual(Str('<80').to_range(ttype=int, or_equal=True), (0, 80))
         self.assertEqual(Str('<=80').to_range(), (0, 80))
         self.assertEqual(Str('  3 - 78').to_range(), (3, 78))
         self.assertEqual(Str('  3,8 - 78').to_range(), (3.8, 78))

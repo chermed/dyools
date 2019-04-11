@@ -110,7 +110,10 @@ class Str(object):
                 break
         return ttype(tmp[::-1])
 
-    def to_range(self, ttype=float):
+    def to_range(self, ttype=float, or_equal=False):
+        step = 1 if ttype == int else 0.01
+        if or_equal:
+            step=0
         min_, max_ = self.MIN_NUMBER, self.MAX_NUMBER
         txt = self.arg.strip().replace(' ', '')
         if '>=' in txt:
@@ -120,7 +123,7 @@ class Str(object):
         elif '>' in txt:
             splitted = txt.split('>')
             if len(splitted) > 1:
-                min_ = Str(splitted[1]).to_number(ttype=ttype) + 1
+                min_ = Str(splitted[1]).to_number(ttype=ttype) + step
         elif '<=' in txt:
             splitted = txt.split('<=')
             if len(splitted) > 1:
@@ -128,7 +131,7 @@ class Str(object):
         elif '<' in txt:
             splitted = txt.split('<')
             if len(splitted) > 1:
-                max_ = Str(splitted[1]).to_number(ttype=ttype) - 1
+                max_ = Str(splitted[1]).to_number(ttype=ttype) - step
         elif '-' in txt:
             splitted = txt.split('-')
             if len(splitted) > 1:
