@@ -69,6 +69,7 @@ class TestStr(TestCase):
 
     def test_to_range(self):
         from dyools import Str
+        self.assertEqual(Str('  9 ').to_range(ttype=int), (9, 9))
         self.assertEqual(Str('>80').to_range(ttype=int), (81, 99999))
         self.assertEqual(Str('>80').to_range(), (80.01, 99999))
         self.assertEqual(Str('>=80').to_range(), (80, 99999))
@@ -79,6 +80,10 @@ class TestStr(TestCase):
         self.assertEqual(Str('  3 - 78').to_range(), (3, 78))
         self.assertEqual(Str('  3,8 - 78').to_range(), (3.8, 78))
         self.assertEqual(Str('  3.8 - 78').to_range(), (3.8, 78))
+        self.assertEqual(Str('  3.8  78').to_range(separators=[' ']), (3.8, 78))
+        self.assertEqual(Str('  3.8 * 7.8   ').to_range(separators=['*']), (3.8, 7.8))
+        self.assertEqual(Str('  30 * 23   ').to_range(separators=['*']), (23, 30))
+        self.assertEqual(Str('  23 * 30   ').to_range(separators=['*']), (23, 30))
         Str.MAX_NUMBER = 99
         Str.MIN_NUMBER = 10
         self.assertEqual(Str('>=80').to_range(), (80, 99))

@@ -53,3 +53,9 @@ class Print(object):
     @classmethod
     def debug(cls, data, header=False, footer=False, total=None, exit=False):
         cls.__show(data, header, footer, total, STATE.DEBUG, exit=exit)
+
+    @classmethod
+    def abort(cls, data=False, header=False, footer=False, total=None, exit=True):
+        if not data:
+            data = 'Aborted !'
+        cls.__show(data, header, footer, total, STATE.ERROR, exit=exit)

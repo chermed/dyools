@@ -7,6 +7,7 @@ import time
 
 import click
 
+from .klass_counter import Counter
 from .klass_convert import Convert
 from .klass_data import Data
 from .klass_path import Path
@@ -86,9 +87,22 @@ def __list(ctx, grep):
     Data(yaml.get_list(), header=['name', 'description']).show(grep=grep)
 
 
-def __execute_commands(commands):
+def __execute_commands(description, confirm, commands):
     for command in commands:
-        Print.info('Command : %s' % command)
+        if Str(command).is_equal('#confirm') and not confirm:
+            if not click.confirm('Continue ?' % command):
+                Print.abort()
+            continue
+        if Str(command).is_equal('#clear') :
+            click.clear()
+            continue
+        if description != command:
+            Print.info(description)
+        if confirm:
+            if not click.confirm('Execute the command : [%s] ?' % command):
+                Print.abort()
+        else:
+            Print.info('Command : %s' % command)
         p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
         out, err = p.communicate()
         if err:
@@ -100,14 +114,17 @@ def __execute_commands(commands):
 @cli_job.command('run')
 @click.argument('name', type=click.STRING, required=True)
 @click.option('--number', '-n', type=click.INT, default=1, required=False)
-@click.option('--sleep', '-e', type=click.INT, default=0, required=False)
+@click.option('--sleep', '-s', type=click.INT, default=0, required=False)
 @click.option('--prompt', is_flag=True, default=False)
+@click.option('--confirm', is_flag=True, default=False)
 @click.option('--clear', is_flag=True, default=False)
 @click.option('--time', 'time_', is_flag=True, default=False)
 @click.option('--inline', is_flag=True, default=False)
 @click.pass_context
-def __run(ctx, name, number, sleep, prompt, clear, time_, inline):
+def __run(ctx, name, number, sleep, prompt, confirm, clear, time_, inline):
     """Run a job"""
+    counter = Counter('global')
+    counter.start()
     yaml = ctx.obj['yaml']
     commands = []
     description = name
@@ -116,8 +133,6 @@ def __run(ctx, name, number, sleep, prompt, clear, time_, inline):
             for line in job_file.readlines():
                 line = line.strip()
                 if not line:
-                    continue
-                if line.startswith('#') or line.startswith(';') or line.startswith('//'):
                     continue
                 commands.append(line)
     elif inline:
@@ -129,16 +144,14 @@ def __run(ctx, name, number, sleep, prompt, clear, time_, inline):
         commands = data.get('commands', [])
         description = data.get('description', name)
     index = 0
-    start = time.time()
     while number != 0:
         index += 1
         if clear:
             click.clear()
         Print.info('')
-        elapsed_time = Str(Convert.time(time.time() - start, r=2), numeric=True, suffix='seconds')
-        Print.info(('-' * 10) + 'times:%s time: %s' % (index, elapsed_time))
-        Print.info(('-' * 10) + '%s' % description)
-        __execute_commands(commands)
+        __execute_commands(description, confirm, commands)
+        if time_:
+            counter.print(title='elapsed time')
         number -= 1
         if number != 0:
             time.sleep(sleep)

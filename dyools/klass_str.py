@@ -5,6 +5,14 @@ import unicodedata
 
 
 class Str(object):
+    """
+    String management, this class accept an argument and convert it to Str Object
+    An Str object can be exported to string or make some transformation, it can also
+    take a numereric argument to make a best render for this type
+
+    Examples :
+       s = Str('123', numeric=True
+    """
     MIN_NUMBER = 0
     MAX_NUMBER = 99999
 
@@ -25,20 +33,30 @@ class Str(object):
         return self.to_str(txt)
 
     def dot_to_underscore(self):
+        """
+        Replace all dots to underscores in the Str Object
+        :return: String
+        """
         txt = self.arg.strip().replace('.', '_')
         return self.to_str(txt)
 
     def to_title(self):
+        """
+        Split the string in the Str Object to a list using the separator ['-', '*', '.', '_'] and then capitalize each one
+        :return: String
+        """
         txt = self.arg.strip()
-        txt = txt.strip('_')
-        txt = txt.strip('-')
         txt = Str(txt).replace({' ': ['-', '*', '.', '_']})
         txt = txt.split()
-        txt = [x.title() for x in txt]
+        txt = [x.title() for x in txt if x]
         txt = ' '.join(txt)
         return self.to_str(txt)
 
     def remove_spaces(self):
+        """
+        Remove spaces from the Str Object
+        :return: String
+        """
         res = self.arg.replace(' ', '')
         return self.to_str(res)
 
@@ -110,36 +128,43 @@ class Str(object):
                 break
         return ttype(tmp[::-1])
 
-    def to_range(self, ttype=float, or_equal=False):
+    def to_range(self, ttype=float, or_equal=False, separators='-'):
+        txt = self.arg.strip()
+        if not isinstance(separators, (list, tuple)):
+            separators = [separators]
+        for sep in separators:
+            txt = txt.replace(sep, '-')
         step = 1 if ttype == int else 0.01
         if or_equal:
-            step=0
+            step = 0
         min_, max_ = self.MIN_NUMBER, self.MAX_NUMBER
-        txt = self.arg.strip().replace(' ', '')
         if '>=' in txt:
             splitted = txt.split('>=')
             if len(splitted) > 1:
-                min_ = Str(splitted[1]).to_number(ttype=ttype)
+                min_ = Str(splitted[-1]).to_number(ttype=ttype)
         elif '>' in txt:
             splitted = txt.split('>')
             if len(splitted) > 1:
-                min_ = Str(splitted[1]).to_number(ttype=ttype) + step
+                min_ = Str(splitted[-1]).to_number(ttype=ttype) + step
         elif '<=' in txt:
             splitted = txt.split('<=')
             if len(splitted) > 1:
-                max_ = Str(splitted[1]).to_number(ttype=ttype)
+                max_ = Str(splitted[-1]).to_number(ttype=ttype)
         elif '<' in txt:
             splitted = txt.split('<')
             if len(splitted) > 1:
-                max_ = Str(splitted[1]).to_number(ttype=ttype) - step
+                max_ = Str(splitted[-1]).to_number(ttype=ttype) - step
         elif '-' in txt:
             splitted = txt.split('-')
             if len(splitted) > 1:
                 min_ = Str(splitted[0]).to_number(ttype=ttype)
-                max_ = Str(splitted[1]).to_number(ttype=ttype)
+                max_ = Str(splitted[-1]).to_number(ttype=ttype)
         elif txt:
             min_ = max_ = Str(txt).to_number(ttype=ttype)
-        return min_, max_
+        if min_ > max_:
+            return max_, min_
+        else:
+            return min_, max_
 
     def to_str(self, arg=None):
         if arg is None:
@@ -150,6 +175,11 @@ class Str(object):
         if self.suffix:
             fmt += ' {suffix}'
         return fmt.format(value=arg, prefix=self.prefix, suffix=self.suffix)
+
+    def is_equal(self, arg):
+        arg = '{}'.format(arg)
+        clean = lambda s: s.replace(' ', '').strip().lower()
+        return clean(arg) == clean(self.arg)
 
     def __str__(self):
         return self.to_str()
