@@ -26,3 +26,17 @@ def log(func):
         return res
 
     return wrapper
+
+
+def raise_exception(exception=Exception, exception_msg='Error', arg_index=-1):
+    def real_decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            _raise = kwargs.pop('exception', False)
+            _arg = (args and args[arg_index]) or (kwargs and next(kwargs.values()))
+            res = func(*args, **kwargs)
+            if _raise and not res:
+                raise exception(exception_msg % _arg)
+            return res
+        return wrapper
+    return real_decorator

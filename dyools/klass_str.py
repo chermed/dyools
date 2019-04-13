@@ -8,10 +8,10 @@ class Str(object):
     """
     String management, this class accept an argument and convert it to Str Object
     An Str object can be exported to string or make some transformation, it can also
-    take a numereric argument to make a best render for this type
+    take a numeric argument to make a best render for this type
 
     Examples :
-       s = Str('123', numeric=True
+       s = Str('123', numeric=True, precision=2, prefix=False, suffix=False)
     """
     MIN_NUMBER = 0
     MAX_NUMBER = 99999

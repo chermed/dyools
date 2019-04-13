@@ -574,11 +574,12 @@ def __fields(ctx, model, fields, grep):
 @click.option('--debug/--no-debug', default=False, required=False)
 @click.option('--xmlid/--no-xmlid', default=False, required=False)
 @click.option('--action/--no-action', default=False, required=False)
+@click.option('--crud/--no-crud', default=False, required=False)
 @click.pass_context
-def __menus(ctx, debug, xmlid, action):
+def __menus(ctx, debug, xmlid, action, crud):
     """SHow menus"""
     rpc = ctx.obj['action_login']()
-    rpc.menus(debug=debug, xmlid=xmlid, action=action)
+    rpc.menus(debug=debug, xmlid=xmlid, action=action, crud=crud)
 
 
 ######################################################################

@@ -65,7 +65,7 @@ class JobLoaderAbstract(JobLoaderBase, metaclass=abc.ABCMeta):
         pass
 
 
-class JobTransformatorAbstract(JobExtractorBase, JobLoaderBase, metaclass=abc.ABCMeta):
+class JobTransformerAbstract(JobExtractorBase, JobLoaderBase, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def transform(self, methods, queued_data, pool):

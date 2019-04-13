@@ -1,4 +1,5 @@
 from .cli_etl import cli_etl
+from .cli_help import cli_help
 from .cli_job import cli_job
 from .cli_po import cli_po
 from .cli_rpc import cli_rpc
@@ -15,16 +16,16 @@ from .klass_csv_connector import CsvConnector
 from .klass_csv_job import CsvJobExtractor
 from .klass_data import Data
 from .klass_date import Date
-from .klass_debug import log
+from .decorators import log, raise_exception
 from .klass_df import DF
 from .klass_eval import Eval
 from .klass_inspect import Inspect
 from .klass_is import IS
-from .klass_job import JobExtractorAbstract, JobLoaderAbstract, JobTransformatorAbstract, JobErrorAbstract
+from .klass_job import JobExtractorAbstract, JobLoaderAbstract, JobTransformerAbstract, JobErrorAbstract
 from .klass_logger import Logger
 from .klass_odoo_connector import OdooConnector
 from .klass_odoo_env import Env
-from .klass_odoo_job import OdooJobExtractor, OdooJobLoader, OdooJobTransformator, OdooJobError
+from .klass_odoo_job import OdooJobExtractor, OdooJobLoader, OdooJobTransformer, OdooJobError
 from .klass_odoo_mixin import Mixin
 from .klass_odoo_rpc import RPC
 from .klass_operator import Operator
@@ -32,6 +33,7 @@ from .klass_path import Path
 from .klass_print import Print
 from .klass_queue import Queue, Pipeline
 from .klass_random import Random
+from .klass_sample import Sample
 from .klass_serie import Serie
 from .klass_sftp import SFTP
 from .klass_str import Str

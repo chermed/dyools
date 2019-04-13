@@ -8,7 +8,6 @@ import time
 import click
 
 from .klass_counter import Counter
-from .klass_convert import Convert
 from .klass_data import Data
 from .klass_path import Path
 from .klass_print import Print
@@ -89,13 +88,15 @@ def __list(ctx, grep):
 
 def __execute_commands(description, confirm, commands):
     for command in commands:
-        if Str(command).is_equal('#confirm') and not confirm:
+        if (Str(command).is_equal('#confirm') or Str(command).is_equal('#continue')) and not confirm:
             if not click.confirm('Continue ?' % command):
                 Print.abort()
             continue
-        if Str(command).is_equal('#clear') :
+        if Str(command).is_equal('#clear'):
             click.clear()
             continue
+        if Str(command).is_equal('#break'):
+            break
         if description != command:
             Print.info(description)
         if confirm:

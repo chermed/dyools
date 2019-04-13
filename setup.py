@@ -57,6 +57,7 @@ setup(
         sign=dyools:cli_sign
         todo=dyools:cli_todo
         job=dyools:cli_job
+        dhelp=dyools:cli_help
     ''',
 
 )

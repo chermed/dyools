@@ -285,7 +285,7 @@ class Mixin(object):
             ffields = self.get('ir.model.fields', [('model_id.model', '=', model)])
         self.show(ffields, columns)
 
-    def menus(self, debug=False, xmlid=False, action=False, user=False):
+    def menus(self, debug=False, xmlid=False, action=False, user=False, crud=False):
         self._require_env()
         lines = []
 
@@ -296,21 +296,31 @@ class Mixin(object):
             bar = ('|' + '-' * 3) if level > 0 else ''
             fmt = "{space}{bar} {name}"
             action_model = action_domain = action_context = False
+            access = ''
             if xmlid:
                 fmt += '  XMLID={xmlid}'
-            if action:
+            if action or crud:
                 if menu.get('action'):
                     action_env, action_id = menu.get('action').split(',')
                     [action_dict] = self.env[action_env].browse(int(action_id)).read(['res_model', 'domain', 'context'])
                     if action_dict:
                         action_model = action_dict.get('res_model') or ''
                         if action_model:
-                            fmt += '  Model={action_model}'
+                            if action:
+                                fmt += '  Model={action_model}'
+                            if crud:
+                                fmt += '  ACCESS={access}'
+                                for op, key in [('create', 'C'),('read', 'R'),('write', 'U'),('unlink', 'D')]:
+                                    try:
+                                        if self.env['ir.model.access'].check(action_model,op,False):
+                                            access += key
+                                    except:
+                                        pass
                         action_domain = action_dict.get('domain') or []
-                        if action_domain:
+                        if action_domain and action:
                             fmt += '  Domain={action_domain}'
                         action_context = action_dict.get('context') or {}
-                        if action_context:
+                        if action_context and action:
                             fmt += '  Context={action_context}'
             line = fmt.format(
                 space=space,
@@ -321,6 +331,7 @@ class Mixin(object):
                 action_model=action_model,
                 action_domain=action_domain,
                 action_context=action_context,
+                access=access,
             )
             lines.append(line)
             for m in menu.get('children', []):

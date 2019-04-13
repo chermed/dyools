@@ -60,13 +60,6 @@ class Operator(object):
         return result
 
 
-        items = cls.flat(lists)
-        items = cls.unique(items)
-        for item in items:
-            if all([item in x for x in lists]):
-                result.append(item)
-        return cls.unique(result)
-
     @classmethod
     def unique_intersection(cls, *lists):
         result = []

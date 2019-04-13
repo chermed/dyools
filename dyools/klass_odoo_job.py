@@ -4,7 +4,7 @@ import logging
 import os
 
 from .klass_is import IS
-from .klass_job import JobExtractorAbstract, JobLoaderAbstract, JobTransformatorAbstract, JobErrorAbstract
+from .klass_job import JobExtractorAbstract, JobLoaderAbstract, JobTransformerAbstract, JobErrorAbstract
 from .klass_random import Random
 from .klass_str import Str
 from .klass_yaml_config import YamlConfig
@@ -97,7 +97,7 @@ class OdooJobLoader(JobLoaderAbstract):
         return fields, load_data
 
 
-class OdooJobTransformator(JobTransformatorAbstract):
+class OdooJobTransformer(JobTransformerAbstract):
 
     def transform(self, methods, queued_data, pool):
         return pool.append((methods, queued_data))
