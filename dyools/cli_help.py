@@ -3,11 +3,9 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 import os
 
 import click
-import polib
 
 from .klass_path import Path
 from .klass_print import Print
-from .klass_yaml_config import YamlConfig
 
 DATABASE_PATH = Path.create_dir(os.path.join(Path.home(), '.dyvz', 'po_databases'))
 
@@ -44,15 +42,18 @@ Misc:
     - odooconnector, odoojob: odoo connector and job utilities for the ETL, see 'etl' for more information
     - csvconnector, csvjob: odoo connector and job utilities for the ETL, see 'etl' for more information
     - consumer: communicate with the remote python agent (ws_agent)
+    - convert: convert data type and time (MB -> GB, seconds -> hours)
+    - counter: a helper to compute the elapsed time
+    - data: a data wrapper and normalizer, the aim of this class to compute header (list) and lines (list pf lists)
 
 
     """
     Print.info(__list.__doc__)
 
+
 @cli_help.command('raise_exception')
 def __raise_exception():
-    """
-raise_exception: for functions that return a boolean, it is possible with this decorator to raise an exception if the
+    """raise_exception: for functions that return a boolean, it is possible with this decorator to raise an exception if the
 function returns False
 
     from dyools import raise_exception
@@ -68,10 +69,10 @@ default arguments:
     """
     Print.info(__raise_exception.__doc__)
 
+
 @cli_help.command('log')
 def __log():
-    """
-log: this decorator logs :
+    """log: this decorator logs :
     1 - arguments and theirs types
     2 - response and its type
     3 - elapsed time in seconds
@@ -86,8 +87,7 @@ log: this decorator logs :
 
 @cli_help.command('etl')
 def __etl():
-    """
-ETL: Extract, Transform, Load and process errors
+    """ETL: Extract, Transform, Load and process errors
 
 Configuration steps:
 --------------------
@@ -287,3 +287,131 @@ Example of a configuration file
     """
     Print.info(__etl.__doc__)
 
+
+@cli_help.command('consumer')
+def __consumer():
+    """Consumer: communicate with remote python agent, for the security reason, use a token
+
+    from dyools import Consumer
+    c = Consumer(host='127.0.0.1', port=5000, token=None)
+    c.ping()  #check if remote agent is up
+    c.info()  #see variables available on the agent
+    c.flush() #remove all results in the local
+    c.print() #print the result
+    c.stop()  #shutdown the remote agent
+
+1 - Execute OS commands :
+
+    from dyools import Consumer
+    c = Consumer(host='127.0.0.1', port=5000)
+    c.add(['ls','-alh'])
+    c.add(['ls'])
+    c.cmdline()
+    c.print()
+
+    OR :
+
+    from dyools import Consumer
+    c = Consumer(host='127.0.0.1', port=5000)
+    c.cmdline(['ls','-alh'])
+    c.print()
+
+2 - Execute python expressions :
+
+    from dyools import Consumer
+    c = Consumer(host='127.0.0.1', port=5000)
+    c.add('import os;import sys')
+    c.add('dirs = os.listdir();a = 8;b = 10')
+    c.add('tbl = {"a": 20, "b": 40}')
+    c.console()
+    c.print_dirs() #pprint a variable
+    c.data_dirs()  #return the value of a variable
+    c.table_tbl()
+    c.print_b()
+
+    OR :
+
+    from dyools import Consumer
+    c = Consumer(host='127.0.0.1', port=5000)
+    c.console('b = 33')
+    c.print_b()
+
+
+3 - Get OS stats: disk usage, cpu and memory usage
+
+    from dyools import Consumer
+    c = Consumer(host='127.0.0.1', port=5000)
+    c.top()    #get a summary of a top command
+    c.top(['/tmp', '/bin', '/usr']) #get a summary of a top command with the disk usage of some paths
+
+    """
+    Print.info(__consumer.__doc__)
+
+
+@cli_help.command('convert')
+def __convert():
+    """Convert: convert data types and time types, units are not case sensible
+
+1 - Convert data types
+
+    from dyools import Convert
+    mb = 1024 #variable in megabytes (units: ["B", "K", "M", "G", "T", "P", "E", "Z", "Y"])
+    Convert.data(mb, 'mb', 'gb') #=> 1.0 (float)
+    Convert.data(mb, 'mb', 'gb', r=2) #=> 1.0 (float) with a round
+
+1 - Convert time types
+
+    from dyools import Convert
+    seconds = 3600 #variable in seconds (units: ["MS", "S", "M", "H"])
+    Convert.time(seconds, 's', 'm') #=> 60.0 (float)
+    Convert.time(seconds, 's', 'h') #=> 1.0 (float)
+    Convert.time(seconds, 's', 'h', r=2) #=> 1.0 (float) using a round
+    """
+    Print.info(__convert.__doc__)
+
+
+@cli_help.command('counter')
+def __counter():
+    """Counter: compute the time elapsed after an execution
+
+    from dyools import Counter
+    c = Counter('A test counter') #the name is optional, automatically the counter is started
+    c.start()    #start the counter
+    c.restart()  #restart the counter
+    c.stop()     #stop the counter
+    c.resume()   #resume the counter
+    c._get_elapsed_time()   #get a dictionnary of data: hours, minutes, seconds and total
+    c.to_str(r=True, title='')   #get the string, by default the round is active and title is empty
+    c.print(r=True, title='')    #print the string to the console
+    """
+    Print.info(__counter.__doc__)
+
+@cli_help.command('data')
+def __data():
+    """Data: a data wrapper
+
+    from dyools import Data
+    d = Data(data, has_header=True, header=[], name='__NAME')
+
+Data can be :
+    - dictionary of dictionaries (not need for header, the wrapper will compute them, the parent key will mapped with the
+    value of name='__NAME')
+    - dictionary of values (not need for header, the wrapper will compute them)
+    - list of dictionaries (not need for header, the wrapper will compute them)
+    - list of lists (has_header=True to specify if the first item is a header else  give a header)
+    - list of values (has_header=True to specify if the data is a header else give a header)
+    - object (should specify the header to get attributes)
+
+
+    from dyools import Data
+    d = Data(data, has_header=True, header=[], name='__NAME')
+    d.get_header()         #return header
+    d.get_default_header() #return header if computed else if there are some lines, an index will be generated
+    d.get_lines()          #return data lines
+    d.get_pretty_table(pretty=True, add_index=False, grep=False, index=False) #return the Prettytable object
+    d.get_html()           #get the html
+    d.to_list()            #get a list of two list, the first item is the header, the second is the list of lines
+    d.to_dictlist()        #get a list of dictionaries
+    d.show(pretty=True, add_index=False, grep=False, index=False, header=False, footer=False, exit=False) #print to console
+    """
+    Print.info(__data.__doc__)

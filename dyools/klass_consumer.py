@@ -4,8 +4,8 @@ from pprint import pprint
 
 import requests
 from past.builtins import basestring
-from prettytable import PrettyTable
 
+from .klass_data import Data
 from .klass_tool import Tool
 
 CONSOLE, CMDLINE, TOP = 'console', 'cmdline', 'top'
@@ -89,21 +89,23 @@ class Consumer(object):
         if item.startswith('table_'):
             item = item[6:]
             tbl_data = self.result[item]
-            x = PrettyTable()
-            x.field_names = tbl_data[0]
-            for item in tbl_data[1:]:
-                x.add_row(item)
-            print(x)
-            print('Total: %s' % (len(tbl_data) - 1))
+            Data(tbl_data).show()
+            try:
+                print('Total: %s' % (len(tbl_data) - 1))
+            except:
+                pass
             return lambda: 'End'
         elif item.startswith('print_'):
             item = item[6:]
             tbl_data = self.result[item]
             pprint(tbl_data)
-            print('Total: %s' % len(tbl_data))
+            try:
+                print('Total: %s' % (len(tbl_data) - 1))
+            except:
+                pass
             return lambda: 'End'
         elif item.startswith('data_'):
-            item = item[6:]
+            item = item[5:]
             tbl_data = self.result[item]
             return lambda: tbl_data
         else:
