@@ -4,9 +4,10 @@ from .klass_serie import Serie
 
 
 class DF(object):
-    def __init__(self, arg={}):
-        assert isinstance(arg, list), "The argument should be a list"
-        self.data = arg
+    def __init__(self, **kwargs):
+        self.data = {}
+        for k, v in kwargs.items():
+            self.data[k] = Serie(v)
 
     def add(self, name, data):
         self.data[name] = Serie(data)

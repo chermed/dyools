@@ -13,5 +13,6 @@ class Inspect(object):
         if getattr(inspect, 'getfullargspec'):
             print(inspect.getfullargspec(callable))
 
+    @classmethod
     def source(cls, callable):
         print(inspect.getsource(callable))

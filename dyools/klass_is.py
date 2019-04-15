@@ -15,7 +15,14 @@ builtin_tuple = tuple
 
 class IS(object):
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not an XML-ID valid', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not of type [%s]')
+    def instance(cls, text, ttype):
+        if not isinstance(text, ttype):
+            return False
+        return True
+
+    @classmethod
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not an XML-ID valid')
     def xmlid(cls, text):
         if not cls.str(text) or cls.empty(text):
             return False
@@ -27,7 +34,7 @@ class IS(object):
                 return False
 
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not a domain', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not a domain')
     def domain(cls, text):
         if not isinstance(text, builtin_list):
             return False
@@ -48,7 +55,7 @@ class IS(object):
         return True
 
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not a string', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not a string')
     def str(cls, text):
         if isinstance(text, basestring):
             return True
@@ -56,7 +63,7 @@ class IS(object):
             return False
 
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not a list', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not a list')
     def list(cls, text):
         if isinstance(text, builtin_list):
             return True
@@ -64,7 +71,7 @@ class IS(object):
             return False
 
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not a dict', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not a dictionary')
     def dict(cls, text):
         if isinstance(text, builtin_dict):
             return True
@@ -72,7 +79,7 @@ class IS(object):
             return False
 
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not a tuple', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not a tuple')
     def tuple(cls, text):
         if isinstance(text, tuple):
             return True
@@ -80,7 +87,7 @@ class IS(object):
             return False
 
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not empty', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not empty')
     def empty(cls, text):
         if cls.str(text):
             text = text.strip()
@@ -90,7 +97,7 @@ class IS(object):
             return True
 
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not iterable', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not iterable')
     def iterable(cls, text):
         if cls.str(text):
             return False
@@ -100,7 +107,7 @@ class IS(object):
             return False
 
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] can not be evaluated', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] can not be evaluated')
     def eval(cls, text, ctx={}):
         if not isinstance(text, basestring):
             return False
@@ -113,12 +120,12 @@ class IS(object):
         return False
 
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not list or tuple', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not list or tuple')
     def list_or_tuple(cls, item):
         return isinstance(item, (builtin_list, builtin_tuple))
 
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not list of list', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not list of list')
     def list_of_list(cls, item):
         if not isinstance(item, builtin_list):
             return False
@@ -129,7 +136,7 @@ class IS(object):
         return True
 
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not a list of values', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not a list of values')
     def list_of_values(cls, item):
         if not isinstance(item, builtin_list):
             return False
@@ -140,7 +147,7 @@ class IS(object):
         return True
 
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not list of dictionaries', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not list of dictionaries')
     def list_of_dict(cls, item):
         if not isinstance(item, builtin_list):
             return False
@@ -151,7 +158,7 @@ class IS(object):
         return True
 
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not a dictionary of dictionaries', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not a dictionary of dictionaries')
     def dict_of_dict(cls, item):
         if not isinstance(item, builtin_dict):
             return False
@@ -163,7 +170,7 @@ class IS(object):
         return True
 
     @classmethod
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not a list of values', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not a list of values')
     def dict_of_values(cls, item):
         if not isinstance(item, builtin_dict):
             return False
@@ -175,7 +182,7 @@ class IS(object):
         return True
 
     @classmethod
-    @raise_exception(exception=FileNotFoundError, exception_msg='[%s] not found or is not a file', arg_index=1)
+    @raise_exception(exception=FileNotFoundError, exception_msg='[%s] not found or is not a file')
     def file(cls, item):
         if os.path.isfile(item):
             return True
@@ -183,7 +190,7 @@ class IS(object):
             return False
 
     @classmethod
-    @raise_exception(exception=NotADirectoryError, exception_msg='[%s] not found or is not a directory', arg_index=1)
+    @raise_exception(exception=NotADirectoryError, exception_msg='[%s] not found or is not a directory')
     def dir(cls, item):
         if os.path.isdir(item):
             return True

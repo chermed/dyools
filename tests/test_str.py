@@ -76,14 +76,19 @@ class TestStr(TestCase):
         self.assertEqual(Str('<80').to_range(ttype=float), (0, 79.99))
         self.assertEqual(Str('<80').to_range(ttype=int), (0, 79))
         self.assertEqual(Str('<80').to_range(ttype=int, or_equal=True), (0, 80))
+        self.assertEqual(Str(' weignt < 80 kg').to_range(ttype=int, or_equal=True), (0, 80))
         self.assertEqual(Str('<=80').to_range(), (0, 80))
         self.assertEqual(Str('  3 - 78').to_range(), (3, 78))
         self.assertEqual(Str('  3,8 - 78').to_range(), (3.8, 78))
         self.assertEqual(Str('  3.8 - 78').to_range(), (3.8, 78))
+        self.assertEqual(Str('  3.8 mm - 78kg ').to_range(), (3.8, 78))
         self.assertEqual(Str('  3.8  78').to_range(separators=[' ']), (3.8, 78))
         self.assertEqual(Str('  3.8 * 7.8   ').to_range(separators=['*']), (3.8, 7.8))
         self.assertEqual(Str('  30 * 23   ').to_range(separators=['*']), (23, 30))
         self.assertEqual(Str('  23 * 30   ').to_range(separators=['*']), (23, 30))
+        self.assertEqual(Str(' test weight 23.5 kg * 30.kg distance   ').to_range(separators=['*']), (23.5, 30))
+        self.assertEqual(Str(' test weight 23.5 kg * 30.kg distance   ').to_range(separators=['*'], ttype=int),
+                         (23, 30))
         Str.MAX_NUMBER = 99
         Str.MIN_NUMBER = 10
         self.assertEqual(Str('>=80').to_range(), (80, 99))

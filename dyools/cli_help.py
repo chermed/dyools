@@ -45,6 +45,12 @@ Misc:
     - convert: convert data type and time (MB -> GB, seconds -> hours)
     - counter: a helper to compute the elapsed time
     - data: a data wrapper and normalizer, the aim of this class to compute header (list) and lines (list pf lists)
+    - date: work with string dates
+    - df: a simple dataframe object with operations 'add' and 'remove', each data is a Serie object
+    - serie: a simple Serie object
+    - eval: evaluate variables within a data structure
+    - inspect: inspect source code
+    - is: check a type
 
 
     """
@@ -386,6 +392,7 @@ def __counter():
     """
     Print.info(__counter.__doc__)
 
+
 @cli_help.command('data')
 def __data():
     """Data: a data wrapper
@@ -415,3 +422,117 @@ Data can be :
     d.show(pretty=True, add_index=False, grep=False, index=False, header=False, footer=False, exit=False) #print to console
     """
     Print.info(__data.__doc__)
+
+
+@cli_help.command('date')
+def __date():
+    """Data: work with string dates
+Date accepts string, date and datetime objects as argument and compute the default format
+A format can be forced
+If not argument is given the value will be the result of datetime.now()
+
+Some global format are :
+    - Date.DATETIME_FORMAT      '%Y-%m-%d %H:%M:%S'
+    - Date.DATETIME_FR_FORMAT   '%d/%m/%Y %H:%M:%S'
+    - Date.DATETIME_HASH_FORMAT '%Y%m%d_%H%M%S'
+    - Date.DATE_FORMAT          '%Y-%m-%d'
+    - Date.DATE_FR_FORMAT       '%d/%m/%Y'
+    - Date.DATE_HASH_FORMAT     '%Y%m%d'
+
+1 - Initialize the object
+
+
+    from dyools import Date
+    d = Date().to_str() #return a string of now format: YYYY-mm-dd HH:MM:SS
+    d = Date().to_str(fmt='%Y') #return a string of now format: YYYY
+    d = Date(fmt='%Y').to_str() #return a string of now format: YYYY
+    d = Date(fmt='%Y').to_str() #return a string of now format: YYYY
+    d = Date('2019-01-01').to_str() #return '2019-01-01'
+    d = Date(date()).to_str() #return '2019-01-01'
+    d = Date(date.today()).to_str() #return a string of today, format: YYYY-mm-dd
+    d = Date(datetime.now()).to_str() #return a string of now, format: YYYY-mm-dd HH:MM:SS
+
+2 - Transformation
+
+    from dyools import Date
+    d = Date()
+    d.relativedelta(days=7, months=-2, years=1, hours=3, minutes=20, seconds=-30) #return a string after transformation
+    d.apply(days=7, months=-2, years=1, hours=3, minutes=20, seconds=-30)         #return an object of Str
+    d.set_format('%d') #change the default format
+    d.last_day()    #return a string of last day format: default format
+    d.fist_day()    #return a string of first day format: default format
+    d.to_datetime() #return a datetime object
+    d.to_date()     #return a date object
+    d.to_fr()       #return a string with format Date.DATE_FR_FORMAT if date else Date.DATETIME_FR_FORMAT for datetime
+    d.is_between('2019-01-01', date(2030, 3, 1))   #return a boolean if the date is between two date, the arguments will
+    convert to Date before comparison
+
+3 - Date range
+
+    for dt in Date.date_range('2010-01-01', date(2030, 1, 23), months=3):
+        print(dt)
+
+3 - Operations
+    1 - add values to Date: Date('2010-01-01') + '3m'  #=> '2010-04-01' list: ['d','m','y','H','M', 'S']
+    2 - compare two objects or with strings Date('2019') > Date('2020') or Date('2019') > '2010-04-01'
+
+    """
+    Print.info(__date.__doc__)
+
+
+@cli_help.command('df')
+def __df():
+    """DF: a simple dataframe object
+
+    from dyools import DF
+    d = DF(index=[0, 1], is_responsible=[True, False])
+    d.add('name', ['Jean', 'Luc'])
+    d.add('age', [30, 45])
+    d.remove('index')
+    """
+    Print.info(__df.__doc__)
+
+
+@cli_help.command('serie')
+def __serie():
+    """Serie: a simple Serie object
+Operations:
+    - addition
+    - subtraction
+    - division
+    - multiplication
+
+    from dyools import Serie
+    s1 = Serie([1, 2, 3])
+    s2 = Serie([10, 20, 30])
+    s3 = Serie([100, 200, 300])
+    s1+s2+s3 #return a Serie object that make a sum of each tuple => <Serie [111, 222, 333]>
+    s1[0] #return the first item as a value
+    s1[1:-1] #return the first item as a value
+    """
+    Print.info(__serie.__doc__)
+
+
+@cli_help.command('eval')
+def __eval():
+    """Eval: evaluate variable in a data structure
+
+    from dyools import Eval
+    ctx = {'a': 3}
+    data = {'m': [{'{a}': '{a}'}], 'n' : ['{a}', 6]}
+    Eval(data, ctx).eval()                   #return {'m': [{3: 3}], 'n': [3, 6]}
+    Eval(data, ctx).eval(eval_result=False)  #return {'m': [{'3': '3'}], 'n': ['3', 6]}
+    Eval(data, ctx).eval(keep_classes=False) #by default classes founds after evaluation a kept in string
+    """
+    Print.info(__eval.__doc__)
+
+@cli_help.command('inspect')
+def __inspect():
+    """Inspect: inspect source code
+
+    from dyools import Inspect
+    import os
+    Inspect.signature(os.path.isfile)
+    Inspect.source(os.path.isfile)
+    """
+    Print.info(__inspect.__doc__)

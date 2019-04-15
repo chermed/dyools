@@ -11,6 +11,8 @@ class Serie(object):
             self.data = arg
 
     def __getitem__(self, item):
+        if isinstance(item, slice):
+            return self.data[item.start: item.stop: item.step]
         assert isinstance(item, int), "the index should be an integer"
         return self.data[item]
 

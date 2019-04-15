@@ -26,6 +26,7 @@ class XlsReader(object):
         if not isinstance(self.sheets, list):
             self.sheets = [self.sheets]
         self.data = {}
+        self.right_bottom = kwargs.get('right_bottom', False)
         self.options = kwargs.get('options', dict(formatting_info=True))
 
     def _nomalize_sheets(self, sheets):
@@ -91,6 +92,10 @@ class XlsReader(object):
 
         for i, i_values in self.data[name]['content'].items():
             for j, value in self.data[name]['content'][i].items():
+                if not value and self.right_bottom:
+                    if i < len(self.data[name]['content']) - 1 and j < len(self.data[name]['content'][i]) - 1:
+                        if self.data[name]['content'][i + 1][j] and self.data[name]['content'][i][j + 1]:
+                            value = True
                 if value and not reserved(name, i, j):
                     row_start, row_stop, col_start, col_stop = find_bounds(name, i, j)
                     self.data[name]['bounds'].append((row_start, row_stop, col_start, col_stop))

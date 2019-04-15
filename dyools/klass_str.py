@@ -106,7 +106,7 @@ class Str(object):
         txt = self.arg.strip().replace(',', '.')
         txt = [c for c in txt if c.isdigit() or c == '.']
         txt = ''.join(txt)
-        return ttype(txt)
+        return ttype(float(txt))
 
     def get_first_number(self, ttype=float):
         txt = self.arg.strip().replace(',', '.')
