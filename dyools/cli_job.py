@@ -86,10 +86,12 @@ def __list(ctx, grep):
     Data(yaml.get_list(), header=['name', 'description']).show(grep=grep)
 
 
-def __execute_commands(description, confirm, commands):
+def __execute_commands(description, confirm, commands, prefix, suffix):
     for command in commands:
+        if not command.strip():
+            continue
         if (Str(command).is_equal('#confirm') or Str(command).is_equal('#continue')) and not confirm:
-            if not click.confirm('Continue ?' % command):
+            if not click.confirm('Continue ?'):
                 Print.abort()
             continue
         if Str(command).is_equal('#clear'):
@@ -97,13 +99,19 @@ def __execute_commands(description, confirm, commands):
             continue
         if Str(command).is_equal('#break'):
             break
+        if command.strip()[0].lower() in ['#', ';']:
+            continue
         if description != command:
             Print.info(description)
+        if prefix:
+            command = prefix + ' ' + command
+        if suffix:
+            command = command + ' ' + suffix
         if confirm:
             if not click.confirm('Execute the command : [%s] ?' % command):
                 Print.abort()
         else:
-            Print.info('Command : %s' % command)
+            Print.info('Command : [%s]' % command)
         p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
         out, err = p.communicate()
         if err:
@@ -121,8 +129,10 @@ def __execute_commands(description, confirm, commands):
 @click.option('--clear', is_flag=True, default=False)
 @click.option('--time', 'time_', is_flag=True, default=False)
 @click.option('--inline', is_flag=True, default=False)
+@click.option('--prefix', type=click.STRING, default='', required=False)
+@click.option('--suffix', type=click.STRING, default='', required=False)
 @click.pass_context
-def __run(ctx, name, number, sleep, prompt, confirm, clear, time_, inline):
+def __run(ctx, name, number, sleep, prompt, confirm, clear, time_, inline, prefix, suffix):
     """Run a job"""
     counter = Counter('global')
     counter.start()
@@ -150,7 +160,7 @@ def __run(ctx, name, number, sleep, prompt, confirm, clear, time_, inline):
         if clear:
             click.clear()
         Print.info('')
-        __execute_commands(description, confirm, commands)
+        __execute_commands(description, confirm, commands, prefix, suffix)
         if time_:
             counter.print(title='elapsed time')
         number -= 1
