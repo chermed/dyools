@@ -35,6 +35,7 @@ Decorators:
 -----------
     - log: Log arguments, response and elpsed time when executing a function
     - raise_exception: for functions that return a boolean, it is possible with this decorator to raise an exception if
+    the function decorated return False
 
 Misc:
 -----
@@ -63,14 +64,13 @@ def __raise_exception():
 function returns False
 
     from dyools import raise_exception
-    @raise_exception(exception=TypeError, exception_msg='[%s] is not valid', arg_index=1)
+    @raise_exception(exception=TypeError, exception_msg='[%s] is not valid')
     def foo(x..):
        pass
 
 default arguments:
     1 - exception = Exception,
     2 - exception_msg = 'Error'
-    3 - arg_index = -1
 
     """
     Print.info(__raise_exception.__doc__)
@@ -536,3 +536,32 @@ def __inspect():
     Inspect.source(os.path.isfile)
     """
     Print.info(__inspect.__doc__)
+
+@cli_help.command('is')
+def __is():
+    """Is: test type of a variable
+All tests can force a rais eof exception if fail
+
+    from dyools import IS
+    Is.dict({}) #return True
+    Is.dict([]) #return False
+    Is.dict([], exception=True) #raise TypeError
+    Is.list(txt)
+    Is.instance(txt)
+    Is.xmlid(txt)
+    Is.domain(txt)
+    Is.str(txt)
+    Is.tuple(txt)
+    Is.empty(txt) #if txt is an empty string
+    Is.iterable(txt) #return True if txt is not string and has __iter__ methods
+    Is.eval(txt, context) #return True the result of Eval(txt, context).eval() is different to txt
+    IS.list_or_tuple(arg)
+    IS.list_of_list(arg)
+    IS.list_of_values(arg)
+    IS.list_of_dict(arg)
+    IS.dict_of_dict(arg)
+    IS.dict_of_values(arg)
+    IS.file(arg)
+    IS.dir(arg)
+    """
+    Print.info(__is.__doc__)
