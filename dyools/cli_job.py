@@ -87,7 +87,9 @@ def __list(ctx, grep):
 
 
 def __execute_commands(description, confirm, commands, prefix, suffix):
+    last_command = False
     for command in commands:
+        rerun = False
         if not command.strip():
             continue
         if (Str(command).is_equal('#confirm') or Str(command).is_equal('#continue')) and not confirm:
@@ -99,7 +101,10 @@ def __execute_commands(description, confirm, commands, prefix, suffix):
             continue
         if Str(command).is_equal('#break'):
             break
-        if command.strip()[0].lower() in ['#', ';']:
+        if Str(command).is_equal('#rerun'):
+            rerun = True
+            command = last_command
+        if not command or command.strip()[0].lower() in ['#', ';']:
             continue
         if description != command:
             Print.info(description)
@@ -107,17 +112,23 @@ def __execute_commands(description, confirm, commands, prefix, suffix):
             command = prefix + ' ' + command
         if suffix:
             command = command + ' ' + suffix
-        if confirm:
-            if not click.confirm('Execute the command : [%s] ?' % command):
-                Print.abort()
-        else:
-            Print.info('Command : [%s]' % command)
-        p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
-        out, err = p.communicate()
-        if err:
-            Print.error(err)
-        if out:
-            Print.info(out)
+        while True:
+            if confirm:
+                if not click.confirm('Execute the command : [%s] ?' % command):
+                    Print.abort()
+            else:
+                Print.info('Command : [%s]' % command)
+            p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+            out, err = p.communicate()
+            if err:
+                Print.error(err)
+            if out:
+                Print.info(out)
+            if rerun:
+                if click.confirm('Rerun the command : [%s] ?' % command):
+                    continue
+            break
+        last_command = command
 
 
 @cli_job.command('run')

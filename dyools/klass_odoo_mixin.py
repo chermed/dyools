@@ -287,7 +287,7 @@ class Mixin(object):
 
     def menus(self, debug=False, xmlid=False, action=False, user=False, crud=False):
         self._require_env()
-        lines = []
+        lines = ['Applications']
 
         def menu_show(menu, level):
             space = (' ' * 4 * (level - 1)) if level > 1 else ''
@@ -343,7 +343,7 @@ class Mixin(object):
         else:
             menus = self.env['ir.ui.menu'].load_menus(debug=debug)
         for menu in menus.get('children', []):
-            menu_show(menu, level=0)
+            menu_show(menu, level=1)
         for line in lines:
             print(line)
 
