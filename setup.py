@@ -42,7 +42,7 @@ setup(
         'terminaltables',
         'colorclass',
         'dateparser',
-
+        'npyscreen',
     ],
     setup_requires=['pytest-runner', ],
     tests_require=['pytest', ],
