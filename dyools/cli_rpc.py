@@ -9,7 +9,6 @@ from pprint import pformat
 from threading import Thread
 
 import click
-import npyscreen
 from past.types import basestring
 
 from .klass_data import Data
@@ -216,35 +215,6 @@ def __list_configurations(ctx, grep=False, index=False):
     Print.info(tbl, header="List of configurations", total=len(tbl._rows))
 
 
-class ConfigForm(npyscreen.NPSApp):
-    def __init__(self, *args, **kwargs):
-        self.current_config = kwargs.pop('current_config', {})
-        super(ConfigForm, self).__init__(*args, **kwargs)
-
-    def main(self):
-        F = npyscreen.Form(name="Configuration", )
-        host = F.add(npyscreen.TitleText, name="Host:", value=self.current_config[ConfigEnum.HOST])
-        port = F.add(npyscreen.TitleText, name="Port:", value=str(self.current_config[ConfigEnum.PORT]))
-        database = F.add(npyscreen.TitleText, name="Database:", value=self.current_config[ConfigEnum.DATABASE])
-        user = F.add(npyscreen.TitleText, name="User:", value=self.current_config[ConfigEnum.USER])
-        password = F.add(npyscreen.TitleText, name="Password:", value=self.current_config[ConfigEnum.PASSWORD])
-        superadminpassword = F.add(npyscreen.TitleText, name="Host:",
-                                   value=self.current_config[ConfigEnum.SUPERADMINPASSWORD])
-        protocol = F.add(npyscreen.TitleSelectOne, name="Host:", max_height=len(ConfigEnum.PROTOCOLS), value=[0],
-                         values=ConfigEnum.PROTOCOLS, scroll_exit=True)
-        mode = F.add(npyscreen.TitleSelectOne, name="Host:", max_height=len(ConfigEnum.MODES), value=[2],
-                     values=ConfigEnum.MODES, scroll_exit=True)
-        F.edit()
-        self.host = host.value
-        self.port = int(port.value)
-        self.database = database.value
-        self.user = user.value
-        self.password = password.value
-        self.superadminpassword = superadminpassword.value
-        self.protocol = ConfigEnum.PROTOCOLS[protocol.value[0]]
-        self.mode = ConfigEnum.MODES[mode.value[0]]
-
-
 @cli_rpc.command('create')
 @click.argument('name')
 @click.pass_context
@@ -255,18 +225,25 @@ def __create_config(ctx, name):
     if name in configs:
         if not click.confirm('The name [{}] is already exists ! continue to update ?'.format(name)):
             ctx.abort()
-    frm = ConfigForm(current_config=current_config)
-    frm.run()
+    host = click.prompt(ConfigEnum.HOST, default=current_config[ConfigEnum.HOST], type=str)
+    port = click.prompt(ConfigEnum.PORT, default=current_config[ConfigEnum.PORT], type=int)
+    database = click.prompt(ConfigEnum.DATABASE, default=current_config[ConfigEnum.DATABASE], type=str)
+    user = click.prompt(ConfigEnum.USER, default=current_config[ConfigEnum.USER], type=str)
+    password = click.prompt(ConfigEnum.PASSWORD, default=current_config[ConfigEnum.PASSWORD], type=str)
+    superadminpassword = click.prompt(ConfigEnum.SUPERADMINPASSWORD,
+                                      default=current_config[ConfigEnum.SUPERADMINPASSWORD], type=str)
+    protocol = click.prompt(ConfigEnum.PROTOCOL, default=current_config[ConfigEnum.PROTOCOL], type=str)
+    mode = click.prompt(ConfigEnum.MODE, default=current_config[ConfigEnum.MODE], type=str)
     data = DEFAULT_CONFIG.copy()
     data.update(dict(
-        host=frm.host,
-        port=frm.port,
-        database=frm.database,
-        user=frm.user,
-        password=frm.password,
-        superadminpassword=frm.superadminpassword,
-        protocol=frm.protocol,
-        mode=frm.mode))
+        host=host,
+        port=port,
+        database=database,
+        user=user,
+        password=password,
+        superadminpassword=superadminpassword,
+        protocol=protocol,
+        mode=mode))
     ctx.obj['config_obj'].add(name, **data)
     ctx.obj['config_obj'].switch(name, 'default', True, False)
     ctx.obj['config_obj'].dump()
