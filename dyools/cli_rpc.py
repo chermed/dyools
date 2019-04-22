@@ -753,14 +753,14 @@ def __load(ctx, datas, assets, start, stop):
 
 @cli_rpc.command('po_export')
 @click.argument('addons', type=click.STRING, required=True)
-@click.option('--lang', type=click.STRING, default='fr', required=True, default='Code of locale, default=fr')
+@click.option('--lang', type=click.STRING, default='fr', required=True, help='Code of locale, default=fr')
 @click.option('--output', '-o', type=click.Path(
     exists=True,
     file_okay=False,
     dir_okay=True,
     readable=True,
     resolve_path=True
-), default=os.getcwd(), default='Output directory')
+), default=os.getcwd(), help='Output directory')
 @click.pass_context
 def __po_export(ctx, addons, output, lang):
     """Export PO file of a module"""
@@ -791,7 +791,7 @@ def __po_export(ctx, addons, output, lang):
     dir_okay=False,
     readable=True,
     resolve_path=True
-), required=True, help='Path of PO file to import')
+), required=True)
 @click.option('--name', type=click.STRING, default='Français', required=True, help='Name, default=Français')
 @click.option('--lang', type=click.STRING, default='fr', required=True, help='Code of the locale, default=fr')
 @click.option('--overwrite', is_flag=True, default=False, help='Overwrite existing terms')
