@@ -14,7 +14,7 @@ DATABASE_PATH = Path.create_dir(os.path.join(Path.home(), '.dyvz', 'po_databases
 
 @click.group()
 def cli_po():
-    """Translations: create a databse and translate po files"""
+    """Translations: create a database and translate po files"""
     pass
 
 

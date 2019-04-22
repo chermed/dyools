@@ -36,8 +36,8 @@ class ConfigEnum(object):
     MODE = 'mode'
     PRODUCTION = 'production'
     TEST = 'test'
-    DEVELOPPEMENT = 'developpement'
-    MODES = [PRODUCTION, TEST, DEVELOPPEMENT]
+    DEVELOPEMENT = 'development'
+    MODES = [PRODUCTION, TEST, DEVELOPEMENT]
     JSONRPC = 'jsonrpc'
     JSONRPC_SSL = 'jsonrpc+ssl'
     PROTOCOLS = [JSONRPC, JSONRPC_SSL]
@@ -353,7 +353,7 @@ def __connect(ctx, host, port):
 @cli_rpc.command('db_list')
 @click.pass_context
 def __db_list(ctx):
-    """Liste databases"""
+    """List databases"""
     ctx.obj['action_connect']().list_db()
 
 
@@ -545,7 +545,7 @@ def __data(ctx, model, domain, limit, order, fields):
 def __count(ctx, model, domain):
     """Count the records"""
     rpc = ctx.obj['action_login']()
-    domain = Tool.contruct_domain_from_str(domain)
+    domain = Tool.construct_domain_from_str(domain)
     Data([[rpc[model].search(domain, count=True)]], header=['Count']).show(header='Count of records')
 
 

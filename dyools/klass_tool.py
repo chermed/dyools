@@ -58,9 +58,9 @@ class Tool(object):
                 obj[k] = backup_data[k]
 
     @classmethod
-    def contruct_domain_from_str(cls, domain):
+    def construct_domain_from_str(cls, domain):
         AND, OR = ' and ', ' or '
-        assert '(' not in domain, "can not process parenthese in string domain"
+        assert '(' not in domain, "can not process parentheses in string domain"
         if AND in domain:
             assert OR not in domain, "domain should not have or and and operators"
         if OR in domain:

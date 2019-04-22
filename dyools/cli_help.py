@@ -23,17 +23,17 @@ CLI: command line interfaces :
     - etl: realize a workflow of a real ETL (extract, transform, Load, process errors)
     - job: execute a bunch of commands, possible to use them in a loop with some prompts
     - po: make a database of translations and help translating a file
-    - rpc: intercate with odoo instances
+    - rpc: interacts with odoo instances
     - sign: save time passed on a project by date and show it on a calendar
     - todo: save tasks to do
     - tool: contains random cli and fake command line interfaces
-    - ws_agent: launch a python agent on a server, iby default launched on 0.0.0.0:5000 (use the class Consummer to
-    intercat with it)
+    - ws_agent: launch a python agent on a server, iby default launched on 0.0.0.0:5000 (use the class Consumer to
+    interact with it)
     - xml: receive an xml in the STDIN and parse it (a separator may be used) and offer the possibility to extract xpaths
 
 Decorators:
 -----------
-    - log: Log arguments, response and elpsed time when executing a function
+    - log: Log arguments, response and elapsed time when executing a function
     - raise_exception: for functions that return a boolean, it is possible with this decorator to raise an exception if
     the function decorated return False
 
@@ -212,7 +212,7 @@ Example of a configuration file
 
 7 - Launch the pipeline
 Commands :
-    etl -c PATH_TO_MIGRATE_FILE --logfile=PATH_TO_OPTIONNAL_LOG_FILE
+    etl -c PATH_TO_MIGRATE_FILE --logfile=PATH_TO_OPTIONAL_LOG_FILE
     etl -c --start=PRIORITY_START --stop=PRIORITY_STOP
     etl -c --select=PRIORITY_1,PRIORITY_2,PRIORITY_3
     etl -c --tags=TAG_A,TAG_B
@@ -231,7 +231,7 @@ Odoo Implementation:
 
     from dyools import OdooJobExtractor, OdooJobLoader, OdooJobTransformer, OdooJobError
 
-    class Partner(OdooJobExtractor, OdooJobTransformator, OdooJobLoader, OdooJobError):
+    class Partner(OdooJobExtractor, OdooJobTransformer, OdooJobLoader, OdooJobError):
         _source_name = 'res.partner'
         _destination_name = 'res.partner'
         _source_fields = ['id', 'name', ]
@@ -400,7 +400,7 @@ def __counter():
     c.restart()  #restart the counter
     c.stop()     #stop the counter
     c.resume()   #resume the counter
-    c._get_elapsed_time()   #get a dictionnary of data: hours, minutes, seconds and total
+    c._get_elapsed_time()   #get a dictionary of data: hours, minutes, seconds and total
     c.to_str(r=True, title='')   #get the string, by default the round is active and title is empty
     c.print(r=True, title='')    #print the string to the console
     """
@@ -657,7 +657,7 @@ def __path():
 @cli_help.command('print')
 def __print():
     """Print: print to console, see also 'logger'
-Print data with header, footer, total of item and exit if needs, juste data is required, other arguments are False
+Print data with header, footer, total of item and exit if needs, just data is required, other arguments are False
 
     from dyools import Print
     Print.info('test', header='Title', footer='Summary', total=False, exit=False)  #print to console the text using default color
@@ -815,7 +815,7 @@ def __tool():
         print(d)                #{'a': 20, 'b': 30, 'c': 3, 'd': 4, 'e': 5, 'f': 6}
     print(d)                    #{'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6}
 
-    Tool.contruct_domain_from_str('id = 1 and name = "Test"') #['&', ('id', '=', 1), ('name', '=', 'Test')]
+    Tool.construct_domain_from_str('id = 1 and name = "Test"') #['&', ('id', '=', 1), ('name', '=', 'Test')]
     """
     Print.info(__tool.__doc__)
 
@@ -860,7 +860,7 @@ def __xlswriterr():
     xls.add_line(['2','Luc',24])
     xls.add_footer('AGE', 'avg')  #or xls.add_footer(2, 'avg') operators: min/max/avg/sum
     xls.add_footer_name('AVERAGE')
-    xls.get()                     #get the workbook data, can be writed directly to a file
+    xls.get()                     #get the workbook data, can be writen directly to a file
     xls.save()                    #save the file, xls.save('/tmp/file.xlsx')
     """
     Print.info(__xlswriterr.__doc__)

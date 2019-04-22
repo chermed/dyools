@@ -41,7 +41,7 @@ class TestTool(TestCase):
 
     def test_construct_domain_from_str(self):
         from dyools import Tool
-        c = Tool.contruct_domain_from_str
+        c = Tool.construct_domain_from_str
         self.assertEqual(c('a = 1'), [('a', '=', 1)])
         self.assertEqual(c('a = M'), [('a', '=', 'M')])
         self.assertEqual(c('a = "M+"'), [('a', '=', 'M+')])

@@ -30,7 +30,7 @@ class Queue(pyQueue):
                     self.output_queue.put(received_data)
                 break
             len_received_data = len(received_data)
-            logger.info('queue: name=%s start to process datas threads=%s', self.name, len_received_data)
+            logger.info('queue: name=%s start to process data threads=%s', self.name, len_received_data)
             tab = []
             pool = []
             for i in range(len_received_data):

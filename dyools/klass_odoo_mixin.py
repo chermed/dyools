@@ -165,7 +165,7 @@ class Mixin(object):
         elif isinstance(domain, basestring) and len(domain.split()) < 3:
             domain = [('name', '=', domain)]
         elif isinstance(domain, basestring):
-            domain = Tool.contruct_domain_from_str(domain)
+            domain = Tool.construct_domain_from_str(domain)
         for d_key, d_value in kwargs.items():
             domain.append((d_key, '=', d_value))
         if hasattr(self.odoo, 'models') and isinstance(records, self.odoo.models.Model):
@@ -250,7 +250,7 @@ class Mixin(object):
         self.show(addons, fields=['name', 'state'], title="modules before")
         addons = self.env['ir.module.module'].search([('name', 'in', addons_names)])
         addons = self.to_obj('ir.module.module', addons)
-        assert op in ['install', 'upgrade', 'uninstall'], "opeartion %s is npt mapped" % op
+        assert op in ['install', 'upgrade', 'uninstall'], "operation %s is npt mapped" % op
         if op == 'install':
             addons.button_immediate_install()
         elif op == 'upgrade':
@@ -650,7 +650,7 @@ class Mixin(object):
 
     def __getattr__(self, item):
         mapping = {
-            'warhouses': 'stock.warehouse',
+            'warehouses': 'stock.warehouse',
             'companies': 'res.company',
             'users': 'res.users',
             'partners': 'res.partner',
@@ -677,13 +677,13 @@ class Mixin(object):
         return self.env
 
     def __lshift__(self, other):
-        assert isinstance(other, Mixin), "Backup and restore work for environnements"
+        assert isinstance(other, Mixin), "Backup and restore work for environments"
         with Path.tempdir() as tmp:
             path = other.dump_db(dest=tmp)
             self.restore_db(path, drop=True)
 
     def __rshift__(self, other):
-        assert isinstance(other, Mixin), "Backup and restore work for environnements"
+        assert isinstance(other, Mixin), "Backup and restore work for environments"
         with Path.tempdir() as tmp:
             path = self.dump_db(dest=tmp)
             other.restore_db(path, drop=True)
