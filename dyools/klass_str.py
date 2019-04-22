@@ -5,17 +5,6 @@ import unicodedata
 
 
 class Str(object):
-    """
-    String management, this class accept an argument and convert it to Str Object
-    An Str object can be exported to string or make some transformation, it can also
-    take a numeric argument to make a best render for this type
-
-    Examples :
-       s = Str('123', numeric=True, precision=2, prefix=False, suffix=False)
-    """
-    MIN_NUMBER = 0
-    MAX_NUMBER = 99999
-
     def __init__(self, arg, numeric=False, precision=2, prefix=False, suffix=False):
         self.arg = '{}'.format(arg)
         self.numeric = any([numeric, isinstance(arg, (int, float))])
@@ -128,7 +117,7 @@ class Str(object):
                 break
         return ttype(tmp[::-1])
 
-    def to_range(self, ttype=float, or_equal=False, separators='-'):
+    def to_range(self, ttype=float, or_equal=False, separators='-', min_number=0, max_number=99999):
         txt = self.arg.strip()
         if not isinstance(separators, (list, tuple)):
             separators = [separators]
@@ -137,7 +126,7 @@ class Str(object):
         step = 1 if ttype == int else 0.01
         if or_equal:
             step = 0
-        min_, max_ = self.MIN_NUMBER, self.MAX_NUMBER
+        min_, max_ = min_number, max_number
         if '>=' in txt:
             splitted = txt.split('>=')
             if len(splitted) > 1:

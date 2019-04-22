@@ -21,15 +21,15 @@ def __list():
 CLI: command line interfaces :
 ------------------------------
     - etl: realize a workflow of a real ETL (extract, transform, Load, process errors)
-    - dhelp: show the manual of the api
     - job: execute a bunch of commands, possible to use them in a loop with some prompts
     - po: make a database of translations and help translating a file
+    - rpc: intercate with odoo instances
     - sign: save time passed on a project by date and show it on a calendar
     - todo: save tasks to do
     - tool: contains random cli and fake command line interfaces
     - ws_agent: launch a python agent on a server, iby default launched on 0.0.0.0:5000 (use the class Consummer to
     intercat with it)
-    - xml: receive an xml in the STDIN and parse them (a separator may be use) and offer the possiblity to extract xpaths
+    - xml: receive an xml in the STDIN and parse it (a separator may be used) and offer the possibility to extract xpaths
 
 Decorators:
 -----------
@@ -52,7 +52,21 @@ Misc:
     - eval: evaluate variables within a data structure
     - inspect: inspect source code
     - is: check a type
-
+    - logger: log to console using colors if possible
+    - path: make operations on files and directories
+    - print: print data to console like logger with header and footer
+    - queue: pipeline implementation
+    - random: generate some randoms
+    - sample: generate some sample data
+    - sftp: tools for paramiko SFTP instance
+    - str: tools around the string objects, can also format a numeric value
+    - table: a wrapper around list of lists, remove columns and rows and flat data to make the iterations
+    - tool: some tools to redirect stdout/stdin, protect attributes/items and construct an Odoo domain from a string
+    - ws: launch an python remote server, see also 'ws_agent'
+    - xlsreader: export tables from an Excel file
+    - xlswriterr: create an excel file
+    - xml: work with XML architecture
+    - yamlconfig: work with Yaml files for configuration
 
     """
     Print.info(__list.__doc__)
@@ -540,7 +554,7 @@ def __inspect():
 @cli_help.command('is')
 def __is():
     """Is: test type of a variable
-All tests can force a rais eof exception if fail
+All tests can be forced to raise an exception if it fails
 
     from dyools import IS
     Is.dict({}) #return True
@@ -565,3 +579,334 @@ All tests can force a rais eof exception if fail
     IS.dir(arg)
     """
     Print.info(__is.__doc__)
+
+@cli_help.command('logger')
+def __logger():
+    """Logger: log to console using colors if possible
+
+    from dyools import Logger
+    Logger.info('test')  #print to console the text using default color
+    Logger.info('test', exit=True) #force exit
+    Logger.warning('test') #color=yellow
+    Logger.debug('test')   #color=blue
+    Logger.success('test') #color=green
+    Logger.code('test')    #color=cyan
+    Logger.error('test')   #color=red default exit=True
+    Logger.title('test')   #color=white bold=True
+
+    """
+    Print.info(__logger.__doc__)
+
+@cli_help.command('operator')
+def __operator():
+    """Operator: make operations on data, flat lists, intersection, unique, etc
+
+    from dyools import Operator
+    Operator.flat([1, 2, [2], 3])                            # [1, 2, 2, 3]
+    Operator.unique([1, 2, 2, 3])                            # [1, 2, 3]
+    Operator.split_and_flat(',', '1, 2, 2, 3')               # ['1', ' 2', ' 2', ' 3']
+    Operator.intersection([1, 2, 2, 3], [1, 2], [2])         # [2, 2]
+    Operator.unique_intersection([1, 2, 2, 3], [1, 2], [2])  # [2]
+
+    """
+    Print.info(__operator.__doc__)
+
+@cli_help.command('path')
+def __path():
+    """Path: tools around files and directories
+
+    from dyools import Path
+    with Path.chdir('/tmp'):
+        "change temporary the path"
+        pass
+
+    with Path.tempdir() as d:
+        "d <string> is temporary folder that will be deleted at the end"
+        pass
+
+    with Path.tempfile(mode='wb+') as f:
+        "f <tempfile> is temporary file created with the mode 'wb+' that will be deleted at the end"
+        f.name          # path of the file
+        f.write('data') # create some data
+
+    Path.subpaths('/x/y/z/test/txt.txt') # ['/x', '/x/y', '/x/y/z', '/x/y/z/test']
+    Path.create_file('file.txt', 'some data', eol=0) #create the file if not exists, else change the content if different
+    and add N 'eof' lines as '\\n'
+
+    Path.home() #return the home folder, full path
+    Path.touch(''/x/y/z/txt.txt')   #create all folders if not exists and touch the file
+    Path.create_dir('/x/y/z')       #create folders
+    Path.clean_dir('/x/y/z')        #remove folders and files under the path
+    Path.delete_dir('/x/y/z')       #remove the folder
+    Path.clean_empty_dirs('/x/y/z') #get all directories (recursively) and delete the empty ones, if a folder contains an
+    empty folder then it will be deleted also
+
+    Path.size_str('/x/y', 'mb')     # 120 MB  works for folders and files
+    Path.size('/x/y/z', 'mb')       # 120     works for folders and files
+    Path.find_files('K*R.PY', '/x/y') #return the list of full paths of all python files that begins with K and ends with R
+    Path.find_file_path('test.txt', '/tmp') #try to find the file in the current path else, try to look in a specific path
+    declaration: find_file_path(path, home=False, raise_if_not_found=False)
+
+    Path.find_dir_path('folder', '/x/y') #like find_file_path but it works for folders
+    Path.grep(cls, expressions, files, comment=False) #expressions['dump','print'] files=['file1.txt', 'file2.txt'] comment='#'
+    check if there are files that contains one of the expressions, ignore lines that match the comment, expressions and
+    comment are regular expressions, this function return dictionary of dictionaries file => expression > line number
+    """
+    Print.info(__path.__doc__)
+
+@cli_help.command('print')
+def __print():
+    """Print: print to console, see also 'logger'
+Print data with header, footer, total of item and exit if needs, juste data is required, other arguments are False
+
+    from dyools import Print
+    Print.info('test', header='Title', footer='Summary', total=False, exit=False)  #print to console the text using default color
+    Print.info('test', exit=True) #force exit
+    Print.success('test') #color=green
+    Print.error('test')   #color=red default exit=True
+    Print.warning('test') #color=yellow
+    Print.debug('test')   #color=cyan
+    Print.abort('test')   #color=red default exit=True and text is 'Aborted' if not provided
+    """
+    Print.info(__print.__doc__)
+
+@cli_help.command('queue')
+def __queue():
+    """Queue: pipeline implementation
+Prepare data and put them to Queue, the queue create N threads got from queue and dispatch data to each thread for processing
+It's possible to chain Queues to construct a pipeline
+
+    from dyools import Pipeline
+    pipeline = Pipeline()
+    pipeline.add_worker(name='Extract', maxsize=4)
+    pipeline.add_worker(name='Transform', maxsize=4)
+    pipeline.add_worker(name='Load', maxsize=4)
+    pipeline.add_worker(name='Error', maxsize=1)
+    pipeline.start()
+    ...
+    pipeline.put(queue_data) #structure of queue_data is [[methods, data], [methods, data], ...]
+        methods is a list of chained methods, each methods should have three arguments and return two (the first and the last)
+        def process_something(methods, data, pool):
+            ...
+            pool.append((methods, new_data))
+    ...
+    pipeline.stop()
+    """
+    Print.info(__queue.__doc__)
+
+@cli_help.command('random')
+def __random():
+    """Random: generate some randoms
+
+    from dyools import Random
+    Random.uuid()
+    Random.base64(10)
+    Random.alphanum(12)
+    Random.digits(20)
+    Random.alpha(80)
+    """
+    Print.info(__random.__doc__)
+
+@cli_help.command('sample')
+def __sample():
+    """Sample: generate some sample data
+First argument is the number of items, the second is the number of nested items
+
+    from dyools import Sample
+    Sample.dict(10)
+    Sample.list(20)
+    Sample.list_of_alpha(10)
+    Sample.list_of_digits(10)
+    Sample.list_of_dicts(6, 4)
+    Sample.dict_of_lists(6, 4)
+    Sample.dict_of_ints(6, 4)
+    """
+    Print.info(__sample.__doc__)
+
+@cli_help.command('sftp')
+def __sftp():
+    """SFTP: tools for paramiko SFTP instance
+
+    from dyools import SFTP
+    with SFTP(sftp_instance).chdir('/tmp'):
+        ...
+    """
+    Print.info(__sftp.__doc__)
+
+@cli_help.command('str')
+def __str():
+    """Str: tools for string management
+An Str instance can accept a numeric value to make some specific format
+
+    from dyools import Str
+    Str('  &tés °ma_').to_code()         #'TES_MA'
+    Str('.te..xt.').dot_to_underscore()  #'_te__xt_'
+    Str(' test1 test2 ').to_title()      #'Test1 Test2'
+    Str(' test1 test2 ').remove_spaces() #'test1test2'
+    Str('text').replace(dict(z=['t','x'], x='e') #'zxzz'
+    Str(2300000, precision=2, numeric=True).with_separator(sep='_', nbr=3, rtl=True) #'2_300_000'
+    Str('2300000.0', precision=2, numeric=True).with_separator(sep='_', nbr=3, rtl=True) #'2_300_000.00'
+    Str('up').case_combinations()        #['Up', 'up', 'uP', 'UP']
+    Str('téxt').remove_accents()         #'text'
+    Str('te1.8 9xt').to_number()         #1.89 pass ttype=str to get a string
+    Str('te1.8 9xt').get_first_number()  #1.8  force the type with ttype
+    Str('te1.8 9xt').get_last_number()   #9.0  force the type with ttype
+    Str('weight 1-89 kg').to_range()     #(1.0, 89.0) force the type with ttype
+    Str('weight >89 kg').to_range()      #(89.01, 99999)
+    Str('weight 20-*-40 kg').to_range(ttype=int, min_number=10, max_number=100, separators=['*','-'])
+    Str('weight <40 kg').to_range(ttype=int, min_number=10, max_number=100) #(10, 39)
+    Str('weight <40 kg').to_range(ttype=int, min_number=10, max_number=100, or_equal=True) #(10, 40)
+    Str('text').to_str()                 #'text'
+    Str('te xt').is_equal('TEXT')        #True remove space and strip and compare the lowercase of the two strings
+
+    """
+    Print.info(__str.__doc__)
+
+@cli_help.command('table')
+def __table():
+    """Table: a wrapper around list of lists, remove columns and rows and flat data to make the iterations
+Accept a data like [['', 'name','age'], [1, 'John',30], [2, 'Luc',28]]
+
+    from dyools import Table
+    tbl = Table([['id', 'name','age'], [1, 'John',30], [2, 'Luc',28]])
+    tbl.set_row_index([0])
+    tbl.set_col_index([0])
+    tbl.get_flat()             #[['name', 1, 'John'], ['name', 2, 'Luc'], ['age', 1, 30], ['age', 2, 28]]
+    tbl.get_data()             #[['id', 'name', 'age'], [1, 'John', 30], [2, 'Luc', 28]]
+    tbl.get_rows([0, 1])   #[['id', 'name', 'age'], [1, 'John', 30]]
+    tbl.get_columns([1, 2])    #[['name', 'John', 'Luc'], ['age', 30, 28]]
+    tbl[1:1] #'John'
+    tbl.ncols                  #3
+    tbl.nrows                  #3
+    tbl.remove_cols([2])
+    tbl.remove_rows([2])
+    tbl.get_flat()             #[['name', 1, 'John']]
+    """
+    Print.info(__table.__doc__)
+
+@cli_help.command('tool')
+def __tool():
+    """Tool: some tools to redirect stdout/stdin, protect attributes/items and construct an Odoo domain from a string
+
+    from dyools import Tool
+    output = {}
+    with Tool.stdout_in_memory(output):
+        print('test')
+    print(output)   #{'data': 'test\n'}
+
+    class O(object):
+        pass
+    o = O()
+    o.a, o.b = 10, 20
+    with Tool.protecting_attributes(o, attrs=['a','b']):
+        o.a, o.b = 0, 1
+        print(o.a, o.b)       #0 1
+    print(o.a, o.b)           #10 20
+
+    l = ['a', 'b', 'c', 1, 2, 3]
+    with Tool.protecting_items(l, items=[0, 1]):
+        l[0], l[1] = 'x', 'y'
+        print(l)               #['x', 'y', 'c', 1, 2, 3]
+    print(l)                   #['a', 'b', 'c', 1, 2, 3]
+
+    d = {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6}
+    with Tool.protecting_items(d, items=['a', 'b']):
+        d['a'], d['b'] = 20, 30
+        print(d)                #{'a': 20, 'b': 30, 'c': 3, 'd': 4, 'e': 5, 'f': 6}
+    print(d)                    #{'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6}
+
+    Tool.contruct_domain_from_str('id = 1 and name = "Test"') #['&', ('id', '=', 1), ('name', '=', 'Test')]
+    """
+    Print.info(__tool.__doc__)
+
+@cli_help.command('ws')
+def __ws():
+    """WS: a method to launch a python webservice based on Flask
+
+    from dyools import WS
+    ws = WS(port=5000, env=None, host='0.0.0.0', token=None, name=None, ctx={}, **kwargs)
+    ws.start() #start the webservice
+    ws.stop()  #stop the server or get url /shutdown
+    #see 'consumer' for more details
+    """
+    Print.info(__ws.__doc__)
+
+@cli_help.command('xlsreader')
+def __xlsreader():
+    """XlsReader: export tables from an Excel file
+
+    from dyools import XlsReader
+    xls = XlsReader('example.xls', sheets=['Sheet1'], options={'formatting_info':True)} #sheets and options (xlrd) are optional
+    xls = XlsReader('example.xls', right_bottom=True} #if the first cell is empty
+    xls.get_data()   #get a dictionary, keys are name of sheets, values are content
+    xls.get_tables() #get a dictionary, keys are name of sheets, values are tables
+    """
+    Print.info(__xlsreader.__doc__)
+
+@cli_help.command('xlswriterr')
+def __xlswriterr():
+    """XlsWriter: create and excel file
+
+    from dyools import XlsWriter
+    xls = XlsWriter(filename='example.xlsx', options={}) #filename is optional, options are xlsxwriter workbook options
+    xls.set_sheet('NAMES')        #if default sheet rename it else create a new one
+    xls.add_header(['NAME'])
+    xls.add_line(['John'])
+    xls.add_line(['Luc'])
+    xls.set_sheet('Data')         #if default sheet rename it else create a new one
+    xls.set_offset(3, 3)          #set the offset of table
+    xls.add_header(['ID','NAME','AGE'])
+    xls.add_line(['1','John',20])
+    xls.add_line(['2','Luc',24])
+    xls.add_footer('AGE', 'avg')  #or xls.add_footer(2, 'avg') operators: min/max/avg/sum
+    xls.add_footer_name('AVERAGE')
+    xls.get()                     #get the workbook data, can be writed directly to a file
+    xls.save()                    #save the file, xls.save('/tmp/file.xlsx')
+    """
+    Print.info(__xlswriterr.__doc__)
+
+@cli_help.command('xml')
+def __xml():
+    """XML: work with XML architecture
+
+    from dyools import Xml
+    xml = Xml('<div name="first_div">Text</div>')
+    xml.nodes()         #return XmlNode apply attrib(attr, value) or text(txt)
+    xml.nodes().attrib('name', 'not_first_div')
+    xml.nodes().text('Text 2)
+    xml.to_string()     #'<div name="not_first_div">Text 2</div>'
+    xml.pretty()        #'<div name="not_first_div">Text 2</div>'
+    xml.get_xpath_expr('div', name='not_first_div') #['//div[@name="not_first_div"]']
+    xml.expr_with_arch('div', name='not_first_div') #[['Xpath', '//div[@name="not_first_div"]'], ['Expression', '///div[@name="not_first_div"]'], ['Architecture', '<div name="not_first_div">Text 2</div>']]
+    xml.xpath('div', name='not_first_div') #[b'<div name="not_first_div">Text 2</div>']
+    xml.expr('div', name='not_first_div')  #[['Xpath', '//div[@name="not_first_div"]'], ['Expression', '///div[@name="not_first_div"]']]
+    xml = Xml('<div name="parent_div"><div name="first_div">Text</div></div>')
+    xml.query('div', 'name') #[['parent_div', 'parent_div', 'div'], ['first_div', 'parent_div.first_div', 'div.div']]
+    xml.query('div', 'name', only_parent=True)      #[['parent_div', 'parent_div', 'div']]
+    xml.query('div', 'name', child_of='parent_div') #[['first_div', 'parent_div.first_div', '']]
+    xml.query('div', 'name', under='span')          #[]
+    #full declaration xml.query(tag, attr, attrs={}, only_parent=False, child_of=False, under=False)
+    """
+    Print.info(__xml.__doc__)
+
+@cli_help.command('yamlconfig')
+def __yamlconfig():
+    """YamlConfig: work with yaml file configuration
+
+    from dyools import YamlConfig
+    yml = YamlConfig('config.yml')
+    yml = YamlConfig('config.yml', defaults={'port': 8069}, create_if_not_exists=True, many=False)
+    yml.get_data() #{}
+    yml.add('server1', name='Server A', port=8000) #the first item is the keys, the others are parameters
+    yml.add('server2', name='Server B', is_ok=False)
+    yml.get_data() #{'server1': {'port': 8000, 'name': 'Server A'}, 'server2': {'port': 8069, 'name': 'Server B', 'is_ok': False}}
+    yml.get_values()                #{}
+    yml.get_values(_name='server1') #{'port': 8000, 'name': 'Server A'}
+    yml.get_values(server=8000) #{}
+    yml.get(_name='server1')  #{'server1': {'port': 8000, 'name': 'Server A'}}
+    yml.get_list() #[{'name': 'Server A', 'port': 8000}, {'name': 'Server B', 'port': 8069, 'is_ok': False}]
+    yml.delete(_name='server1')
+    yml.dump()  #save data to file
+    yml.set_data({}) #erase data
+    """
+    Print.info(__yamlconfig.__doc__)

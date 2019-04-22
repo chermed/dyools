@@ -9,11 +9,14 @@ from .klass_xml import Xml
 
 
 @click.group(invoke_without_command=True)
-@click.option('--attrs', '-a', type=click.STRING, nargs=2, multiple=True)
-@click.option('--tags', '-t', type=click.STRING, nargs=1, multiple=True)
-@click.option('--separator', '-s', type=click.STRING, default=Xml.SEPARATOR, )
-@click.option('--with-arch', is_flag=True, default=False)
+@click.option('--attrs', '-a', type=click.STRING, nargs=2, multiple=True,
+              help='Attributes with values like : \'name phone\' \'class text-left\'')
+@click.option('--tags', '-t', type=click.STRING, nargs=1, multiple=True, help='Tags like \'div\' \'field\'')
+@click.option('--separator', '-s', type=click.STRING, default=Xml.SEPARATOR,
+              help='Use specific separator/delimiter to extract XML')
+@click.option('--with-arch', is_flag=True, default=False, help='SHow also the XML architecture result')
 def cli_xml(attrs, tags, separator, with_arch):
+    """Xml query to export xpath and architecture"""
     attrs, tags = dict(attrs), list(tags)
     clean_arch = ''
     arch = ''

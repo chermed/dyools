@@ -89,7 +89,5 @@ class TestStr(TestCase):
         self.assertEqual(Str(' test weight 23.5 kg * 30.kg distance   ').to_range(separators=['*']), (23.5, 30))
         self.assertEqual(Str(' test weight 23.5 kg * 30.kg distance   ').to_range(separators=['*'], ttype=int),
                          (23, 30))
-        Str.MAX_NUMBER = 99
-        Str.MIN_NUMBER = 10
-        self.assertEqual(Str('>=80').to_range(), (80, 99))
-        self.assertEqual(Str('<=80').to_range(), (10, 80))
+        self.assertEqual(Str('>=80').to_range(max_number=99), (80, 99))
+        self.assertEqual(Str('<=80').to_range(min_number=10), (10, 80))

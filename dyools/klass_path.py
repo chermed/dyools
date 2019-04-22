@@ -36,7 +36,7 @@ class Path(object):
     @classmethod
     @contextmanager
     def tempfile(cls, **kwargs):
-        f = tempfile.NamedTemporaryFile(delete=True, **kwargs)
+        f = tempfile.NamedTemporaryFile(delete=False, **kwargs)
         try:
             yield f
         finally:
@@ -44,7 +44,7 @@ class Path(object):
                 os.remove(f.name)
 
     @classmethod
-    def subpaths(self, path, isfile=False):
+    def subpaths(self, path):
         elements = []
         sep = os.path.sep if path.startswith(os.path.sep) else ''
         res = [x for x in path.split(os.path.sep) if x]
@@ -55,7 +55,7 @@ class Path(object):
                 elements.append(os.path.join(sep, elements[-1], item))
             else:
                 elements = [os.path.join(sep, item)]
-        return elements if not isfile else elements[:-1]
+        return elements if not os.path.isfile(path) else elements[:-1]
 
     @classmethod
     def create_file(cls, path, content, eof=0):
@@ -84,13 +84,13 @@ class Path(object):
         path = os.path.join(*path)
         cls.create_dir(os.path.dirname(path))
         if not os.path.isfile(path):
-            with open(path, 'w+') as f:
-                pass
+            open(path, 'a').close()
         return path
 
     @classmethod
     def create_dir(cls, path):
-        os.makedirs(path, exist_ok=True)
+        if path:
+            os.makedirs(path, exist_ok=True)
         return path
 
     @classmethod
@@ -144,13 +144,12 @@ class Path(object):
             return round(total_size, 2), 'B'
 
     @classmethod
-    def find_files(cls, expr, path=False):
+    def find_files(cls, expr, path=os.getcwd()):
         if os.path.isfile(path):
             if fnmatch.filter([path], expr):
                 return [path]
             else:
                 return []
-        path = path or os.getcwd()
         with cls.chdir(path):
             matches = set()
             for root, dirnames, filenames in os.walk(path):

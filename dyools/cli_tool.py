@@ -15,12 +15,16 @@ def cli_tool():
 
 @cli_tool.command('random')
 @click.argument('length', type=click.INT, default=24, required=False)
-@click.option('--nbr', '-n', type=click.INT, default=1, required=False)
-@click.option('--uuid', is_flag=True, type=click.BOOL, default=False, required=False)
-@click.option('--base64', is_flag=True, type=click.BOOL, default=False, required=False)
-@click.option('--alpha', is_flag=True, type=click.BOOL, default=False, required=False)
-@click.option('--digits', is_flag=True, type=click.BOOL, default=False, required=False)
-@click.option('--alphanum', is_flag=True, type=click.BOOL, default=False, required=False)
+@click.option('--nbr', '-n', type=click.INT, default=1, required=False, help='Number of random to generate')
+@click.option('--uuid', is_flag=True, type=click.BOOL, default=False, required=False, help='Show UUID')
+@click.option('--base64', is_flag=True, type=click.BOOL, default=False, required=False,
+              help='Show a random string of base64')
+@click.option('--alpha', is_flag=True, type=click.BOOL, default=False, required=False,
+              help='Show a random string of alpha characters')
+@click.option('--digits', is_flag=True, type=click.BOOL, default=False, required=False,
+              help='Show a random string of digits')
+@click.option('--alphanum', is_flag=True, type=click.BOOL, default=False, required=False,
+              help='Show a random string of alphanumerics')
 def __random(length, nbr, uuid, base64, alpha, digits, alphanum):
     """Generate random strings"""
     Print.info('Some random strings')
@@ -44,7 +48,7 @@ def __random(length, nbr, uuid, base64, alpha, digits, alphanum):
 
 @cli_tool.command('fake')
 @click.argument('name', type=click.STRING, required=False)
-@click.option('--keys', is_flag=True, default=False)
+@click.option('--keys', is_flag=True, default=False, help='Show just keys', )
 def __fake(name, keys):
     """Show a fake examples"""
     fake = Faker('fr_FR')

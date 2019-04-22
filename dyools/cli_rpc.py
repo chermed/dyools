@@ -100,12 +100,13 @@ def fmt_connect(config):
 @click.option('--protocol', type=click.Choice(ConfigEnum.PROTOCOLS), default=None, help="Protocol")
 @click.option('--mode', '-m', type=click.Choice(ConfigEnum.MODES), default=None, help="Mode")
 @click.option('--timeout', '-t', type=click.INT, default=10, help="Timeout in minutes")
-@click.option('--yes', is_flag=True, default=False)
-@click.option('--no-context', is_flag=True, default=False)
-@click.option('--debug', is_flag=True, default=False)
+@click.option('--yes', is_flag=True, default=False, help='Prevent showing confirmation prompts')
+@click.option('--no-context', is_flag=True, default=False, help='Not send the context to Odoo')
+@click.option('--debug', is_flag=True, default=False, help='Launch in debug mode')
 @click.pass_context
 def cli_rpc(ctx, database, host, port, user, password, superadminpassword, protocol, timeout, config, load, mode, yes,
             no_context, debug):
+    """Load configuration and connect to an Odoo instance"""
     yaml_obj = YamlConfig(config, create_if_not_exists=True)
     configs = yaml_obj.get_data()
     ctx.obj = {}
@@ -113,7 +114,7 @@ def cli_rpc(ctx, database, host, port, user, password, superadminpassword, proto
     if load:
         if load not in configs:
             Print.error('The configuration [{}] not found!'.format(load))
-        current_config = yaml_obj.get_values(name=load)
+        current_config = yaml_obj.get_values(_name=load)
     else:
         current_config = yaml_obj.get_values(default=True) or DEFAULT_CONFIG
     if host is not None:
@@ -260,7 +261,7 @@ def __list(ctx, grep):
 @cli_rpc.command('which')
 @click.pass_context
 def __which(ctx):
-    """Which configuration is current"""
+    """Show which configuration is current"""
     Data(ctx.obj['current_config']).show()
 
 
@@ -268,7 +269,7 @@ def __which(ctx):
 @click.argument('grep', required=False)
 @click.pass_context
 def __use(ctx, grep):
-    """List of configurations"""
+    """Load and use a configuration"""
     configs = ctx.obj['configs']
     data = Data(configs)
     __list_configurations(ctx, grep)
@@ -357,10 +358,10 @@ def __db_list(ctx):
 
 
 @cli_rpc.command('ping')
-@click.option('--login/--no-login', default=False, required=False)
+@click.option('--login/--no-login', default=False, required=False, help='Specify it should ping a database or not')
 @click.pass_context
 def __db_ping(ctx, login):
-    """Ping"""
+    """Ping all servers and databases"""
     configs = ctx.obj['configs']
 
     def _check(config_name, config_values):
@@ -384,11 +385,12 @@ def __db_ping(ctx, login):
 
 @cli_rpc.command('db_dump')
 @click.argument('destination', type=click.STRING, required=True)
-@click.option('--drop/--no-drop', default=False, required=False)
-@click.option('--zip/--no-zip', default=True, required=False)
+@click.option('--drop/--no-drop', default=False, required=False,
+              help='Case destination is a configuration, drop the destination database')
+@click.option('--zip/--no-zip', default=True, required=False, help='Backup in a zip mode (default=zip)')
 @click.pass_context
 def __db_dump(ctx, destination, drop, zip):
-    """Backup a database"""
+    """Backup a database and restore it to another server if destination is a name of a configuration"""
     configs = ctx.obj['configs']
     rpc = ctx.obj['action_connect']()
     assert destination in configs or os.path.isdir(destination), 'The destination [{}] is not found'.format(destination)
@@ -403,10 +405,10 @@ def __db_dump(ctx, destination, drop, zip):
 
 @cli_rpc.command('db_restore')
 @click.argument('source', type=click.STRING, required=True)
-@click.option('--drop/--no-drop', default=False, required=False)
+@click.option('--drop/--no-drop', default=False, required=False, help='Drop the database before the restore')
 @click.pass_context
 def __db_restore(ctx, source, drop):
-    """Restore a database"""
+    """Restore a database from a file or from a configuration"""
     configs = ctx.obj['configs']
     rpc = ctx.obj['action_connect']()
     assert source in configs or os.path.isfile(source), 'The source [{}] is not found'.format(source)
@@ -435,11 +437,11 @@ def __db_drop(ctx, grep):
 
 @cli_rpc.command('db_create')
 @click.argument('database', required=False)
-@click.option('--with-demo', is_flag=True, default=False)
-@click.option('--language', '-l', type=click.STRING, default='fr_FR')
+@click.option('--with-demo', is_flag=True, default=False, help='Load the demonstration data, default=False', )
+@click.option('--language', '-l', type=click.STRING, default='fr_FR', help='Code of the locale, default=fr_FR', )
 @click.pass_context
 def __db_create(ctx, database, with_demo, language):
-    """Create a database"""
+    """Create a new database"""
     rpc = ctx.obj['action_connect']()
     rpc.create_db(database or rpc.dbname, with_demo, language)
 
@@ -499,7 +501,11 @@ def __module_update_list(ctx):
 @click.argument('value', default=None, required=False)
 @click.pass_context
 def __params(ctx, key, value):
-    """Manage parameters"""
+    """Manage parameters
+    rpc param  => list all parameters
+    rpc param key1  => get value
+    rpc param key1 value1 => set value1 to key1
+    """
     rpc = ctx.obj['action_login']()
     fields = ['id', 'key', 'value']
     domain = []
@@ -523,7 +529,7 @@ def __params(ctx, key, value):
 @click.option('fields', '-f', multiple=True, type=click.STRING, default='', help="Fields to show")
 @click.pass_context
 def __data(ctx, model, domain, limit, order, fields):
-    """Show the data"""
+    """Show records"""
     fields = Operator.split_and_flat(',', fields) if fields else ['id', 'name']
     rpc = ctx.obj['action_login']()
     kwargs = dict(domain=domain, fields=fields)
@@ -547,8 +553,8 @@ def __count(ctx, model, domain):
 @click.argument('model', default=None, required=True)
 @click.argument('func', default=None, required=True)
 @click.argument('args', nargs=-1, required=False)
-@click.option('--arg', '-a', type=click.STRING, nargs=2, multiple=True, help="Key value")
-@click.option('--ids', '-id', type=click.STRING, nargs=1, multiple=True, help="Pass IDS")
+@click.option('--arg', '-a', type=click.STRING, nargs=2, multiple=True, help="Provide keywords values")
+@click.option('--ids', '-id', type=click.STRING, nargs=1, multiple=True, help="Pass IDS to consider an api.multi")
 @click.pass_context
 def __func(ctx, model, func, args, arg, ids):
     """Execute a function"""
@@ -571,13 +577,13 @@ def __fields(ctx, model, fields, grep):
 
 
 @cli_rpc.command('menus')
-@click.option('--debug/--no-debug', default=False, required=False)
-@click.option('--xmlid/--no-xmlid', default=False, required=False)
-@click.option('--action/--no-action', default=False, required=False)
-@click.option('--crud/--no-crud', default=False, required=False)
+@click.option('--debug/--no-debug', default=False, required=False, help='Show also the debug menus')
+@click.option('--xmlid/--no-xmlid', default=False, required=False, help='Show the menus XmlIds')
+@click.option('--action/--no-action', default=False, required=False, help='Show th related actions')
+@click.option('--crud/--no-crud', default=False, required=False, help='Show the CRUD')
 @click.pass_context
 def __menus(ctx, debug, xmlid, action, crud):
-    """SHow menus"""
+    """Show menus"""
     rpc = ctx.obj['action_login']()
     rpc.menus(debug=debug, xmlid=xmlid, action=action, crud=crud)
 
@@ -591,8 +597,10 @@ def __menus(ctx, debug, xmlid, action, crud):
 
 @cli_rpc.command('find')
 @click.argument('expr', type=click.STRING, required=True)
-@click.option('--model', '-m', type=click.STRING, required=False, multiple=True)
-@click.option('--type', '-t', type=click.STRING, required=False, multiple=True)
+@click.option('--model', '-m', type=click.STRING, required=False, multiple=True,
+              help='Specify a model to restrict the search')
+@click.option('--type', '-t', type=click.STRING, required=False, multiple=True,
+              help='Specify the type to restrict the search')
 @click.pass_context
 def __find(ctx, expr, model, type):
     """Searching for the expression in the views"""
@@ -692,7 +700,7 @@ def shell(ctx):
 @click.option('--fields', '-f', multiple=True, type=click.STRING, default='', help="Fields to show")
 @click.pass_context
 def __xmlid(ctx, xmlid, fields):
-    """Combined view architecture"""
+    """Show the related model and ID associated to the given XMLID, also fields if provided"""
     fields = Operator.split_and_flat(',', fields)
     rpc = ctx.obj['action_login']()
     view = rpc.xmlid_to_object(xmlid)
@@ -706,7 +714,7 @@ def __xmlid(ctx, xmlid, fields):
 @click.argument('id_', metavar='ID', type=click.INT, required=True)
 @click.pass_context
 def __metadata(ctx, model, id_):
-    """Show metadata"""
+    """Show metadata of a model/id"""
     rpc = ctx.obj['action_login']()
     record = rpc[model].browse(id_)
     Data(record.get_metadata()).show()
@@ -745,17 +753,17 @@ def __load(ctx, datas, assets, start, stop):
 
 @cli_rpc.command('po_export')
 @click.argument('addons', type=click.STRING, required=True)
-@click.option('--lang', type=click.STRING, default='fr', required=True)
+@click.option('--lang', type=click.STRING, default='fr', required=True, default='Code of locale, default=fr')
 @click.option('--output', '-o', type=click.Path(
     exists=True,
     file_okay=False,
     dir_okay=True,
     readable=True,
     resolve_path=True
-), default=os.getcwd())
+), default=os.getcwd(), default='Output directory')
 @click.pass_context
 def __po_export(ctx, addons, output, lang):
-    """Process yaml files"""
+    """Export PO file of a module"""
     global LANGS
     dest_file = os.path.join(output, '{}.po'.format(lang))
     rpc = ctx.obj['action_login']()
@@ -783,13 +791,13 @@ def __po_export(ctx, addons, output, lang):
     dir_okay=False,
     readable=True,
     resolve_path=True
-), required=True, )
-@click.option('--name', type=click.STRING, default='Français', required=True)
-@click.option('--lang', type=click.STRING, default='fr', required=True)
-@click.option('--overwrite', is_flag=True, default=False)
+), required=True, help='Path of PO file to import')
+@click.option('--name', type=click.STRING, default='Français', required=True, help='Name, default=Français')
+@click.option('--lang', type=click.STRING, default='fr', required=True, help='Code of the locale, default=fr')
+@click.option('--overwrite', is_flag=True, default=False, help='Overwrite existing terms')
 @click.pass_context
 def __po_import(ctx, po_file, name, lang, overwrite):
-    """Process yaml files"""
+    """Import PO file"""
     global LANGS
     rpc = ctx.obj['action_login']()
     import_model = rpc['base.language.import']

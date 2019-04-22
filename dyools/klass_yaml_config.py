@@ -46,7 +46,7 @@ class YamlConfig(object):
 
     def get(self, **kwargs):
         res = {}
-        name = kwargs.pop('name', False)
+        name = kwargs.pop('_name', False)
         if name:
             self.set_defaults(name)
         for key, values in self.__data.items():
@@ -75,17 +75,16 @@ class YamlConfig(object):
             res.update(v)
         return res
 
-    def add(self, name, **kwargs):
-        kwargs.pop('name', False)
-        item = self.get(name=name)
+    def add(self, _name, **kwargs):
+        item = self.get(_name=_name)
         values = kwargs.copy()
         if item:
-            item[name].update(kwargs)
-            values = item[name]
+            item[_name].update(kwargs)
+            values = item[_name]
         self.__data.update({
-            name: values
+            _name: values
         })
-        self.set_defaults(name)
+        self.set_defaults(_name)
         return self.__data
 
     def delete(self, **kwargs):

@@ -14,14 +14,15 @@ DATABASE_PATH = Path.create_dir(os.path.join(Path.home(), '.dyvz', 'po_databases
 
 @click.group()
 def cli_po():
+    """Translations: create a databse and translate po files"""
     pass
 
 
 @cli_po.command('update_db')
 @click.argument('path', type=click.STRING, required=True)
-@click.option('--lang', type=click.STRING, default='fr', required=True)
+@click.option('--lang', type=click.STRING, default='fr', required=True, help='The code of the language, default=fr')
 def __update_database(path, lang):
-    """Generate random strings"""
+    """Update the translation database from a directory or a file"""
     global DATABASE_PATH
     if os.path.isfile(path):
         files = [path]
@@ -51,7 +52,8 @@ def __update_database(path, lang):
                 ),
                 )
 @click.argument('lang', type=click.STRING, default='fr', required=True)
-@click.option('--untranslated', is_flag=True, type=click.BOOL, default=False, required=False)
+@click.option('--untranslated', is_flag=True, type=click.BOOL, default=False, required=False,
+              help='Translate only untranslated terms', )
 def __translate(path, lang, untranslated):
     """Fill a po file"""
     global DATABASE_PATH

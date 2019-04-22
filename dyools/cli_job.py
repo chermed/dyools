@@ -28,7 +28,7 @@ def cli_job(ctx):
 @cli_job.command('create')
 @click.argument('name', type=click.STRING, required=True)
 @click.argument('data', type=click.STRING, required=True)
-@click.option('--description', type=click.STRING, required=False)
+@click.option('--description', type=click.STRING, required=False, help='A description of the job', )
 @click.pass_context
 def __create(ctx, name, data, description):
     """Create a job"""
@@ -46,7 +46,7 @@ def __create(ctx, name, data, description):
 @cli_job.command('update')
 @click.argument('name', type=click.STRING, required=True)
 @click.argument('data', type=click.STRING, required=True)
-@click.option('--description', type=click.STRING, required=False)
+@click.option('--description', type=click.STRING, required=False, help='A description of the job', )
 @click.pass_context
 def __update(ctx, name, data, description):
     """Update a job"""
@@ -108,10 +108,11 @@ def __execute_commands(description, confirm, commands, prefix, suffix):
             continue
         if description != command:
             Print.info(description)
-        if prefix:
-            command = prefix + ' ' + command
-        if suffix:
-            command = command + ' ' + suffix
+        if not rerun:
+            if prefix:
+                command = prefix + ' ' + command
+            if suffix:
+                command = command + ' ' + suffix
         while True:
             if confirm:
                 if not click.confirm('Execute the command : [%s] ?' % command):
@@ -132,19 +133,28 @@ def __execute_commands(description, confirm, commands, prefix, suffix):
 
 
 @cli_job.command('run')
-@click.argument('name', type=click.STRING, required=True)
-@click.option('--number', '-n', type=click.INT, default=1, required=False)
-@click.option('--sleep', '-s', type=click.INT, default=0, required=False)
-@click.option('--prompt', is_flag=True, default=False)
-@click.option('--confirm', is_flag=True, default=False)
-@click.option('--clear', is_flag=True, default=False)
-@click.option('--time', 'time_', is_flag=True, default=False)
-@click.option('--inline', is_flag=True, default=False)
-@click.option('--prefix', type=click.STRING, default='', required=False)
-@click.option('--suffix', type=click.STRING, default='', required=False)
+@click.argument('name', type=click.STRING, required=True, )
+@click.option('--number', '-n', type=click.INT, default=1, required=False,
+              help='How many times the job should be executed, -1 to infinite execution', )
+@click.option('--sleep', '-s', type=click.INT, default=0, required=False,
+              help='Case times up to 1, the time to sleep before to resume the execution (in seconds)', )
+@click.option('--prompt', is_flag=True, default=False, help='Case times up to 1, prompt before resume the execution')
+@click.option('--confirm', is_flag=True, default=False,
+              help='Case of a file of many commands, prompt before execution of a command')
+@click.option('--clear', is_flag=True, default=False, help='Case times up to 1, clear the console before to resume', )
+@click.option('--time', 'time_', is_flag=True, default=False, help='Show the execution time', )
+@click.option('--inline', is_flag=True, default=False,
+              help='Force that the first argument given to job is a command and a file nor a job name', )
+@click.option('--prefix', type=click.STRING, default='', required=False, help='Add a prefix to the command', )
+@click.option('--suffix', type=click.STRING, default='', required=False, help='Add a suffix to the command', )
 @click.pass_context
 def __run(ctx, name, number, sleep, prompt, confirm, clear, time_, inline, prefix, suffix):
-    """Run a job"""
+    """Run a job
+    The first argument can be :
+        - Name of a job
+        - command if --inline provided
+        - path of a file of commands
+    """
     counter = Counter('global')
     counter.start()
     yaml = ctx.obj['yaml']
@@ -160,7 +170,7 @@ def __run(ctx, name, number, sleep, prompt, confirm, clear, time_, inline, prefi
     elif inline:
         commands.append(name)
     else:
-        data = yaml.get_values(name=name)
+        data = yaml.get_values(_name=name)
         if not data:
             Print.error('the job [%s] is not exists' % name)
         commands = data.get('commands', [])

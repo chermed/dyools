@@ -125,22 +125,27 @@ def __get_jobs_priorities(logger, config, yaml, _params, context, select, start,
 @click.command()
 @click.option('--logfile', '-l',
               type=click.Path(file_okay=True, dir_okay=False, writable=True, readable=True, resolve_path=True,
-                              allow_dash=True), required=False, )
+                              allow_dash=True), required=False, help='Logfile')
 @click.option('--config', '-c',
               type=click.Path(exists=True, file_okay=True, dir_okay=False, writable=True, readable=True,
                               resolve_path=True,
-                              allow_dash=True), required=True, )
+                              allow_dash=True), required=True, help='Configuration file to use')
 @click.option('--params', '-p',
               type=click.Path(file_okay=True, dir_okay=False, writable=True, readable=True,
                               resolve_path=True,
-                              allow_dash=True), required=False, )
+                              allow_dash=True), required=False,
+              help='Yaml file, keys are connector names and values are a mapping of parameters', )
 @click.option('--log-level', type=click.Choice(['debug', 'info', 'warning', 'error']), default='info', required=True, )
-@click.option('--start', type=click.INT, default=False, )
-@click.option('--stop', type=click.INT, default=False, )
-@click.option('--select', '-s', type=click.STRING, nargs=1, multiple=True)
-@click.option('--tags', '-t', type=click.STRING, default=False, )
+@click.option('--start', type=click.INT, default=False, help='Start with which priority', )
+@click.option('--stop', type=click.INT, default=False, help='Stop with which priority', )
+@click.option('--select', '-s', type=click.STRING, nargs=1, multiple=True,
+              help='Select priorities to process like 2,3,4', )
+@click.option('--tags', '-t', type=click.STRING, default=False, help='Select tags to process like tag1,tag2,tag3', )
 def cli_etl(logfile, config, params, log_level, start, stop, select, tags):
-    """Command line Interface for ETL"""
+    """Command line Interface for ETL\n
+    The yaml file of connector parameters contains the same information
+    that can be given in the configuration file section 'params'
+    """
     time_start = time.time()
     root_path = os.path.dirname(config)
     error_path = Path.create_dir(os.path.join(root_path, 'output', Date(fmt=Date.DATETIME_HASH_FORMAT).to_str()))

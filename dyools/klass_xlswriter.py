@@ -72,9 +72,8 @@ class XlsWriter(object):
             return column
         sheet_data = self._create_and_get_sheet(sheet_name)
         for header_tab in sheet_data['headers']:
-            for header in header_tab:
-                if column in header:
-                    return header.index(column)
+            if column in header_tab:
+                return header_tab.index(column)
         return -1
 
     def set_offset(self, row=0, col=0, sheet_name=False):
@@ -228,6 +227,11 @@ class XlsWriter(object):
         workbook.close()
         file_data.seek(0)
         return file_data.read()
+
+    def save(self, filename=False):
+        filename = filename or self.filename
+        with open(filename, 'wb+') as f:
+            f.write(self.get())
 
     def __getitem__(self, item):
         sheet_data = self._create_and_get_sheet()

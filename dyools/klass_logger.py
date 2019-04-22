@@ -9,9 +9,12 @@ from past.builtins import basestring
 def clean_msg(msg):
     if not isinstance(msg, basestring):
         try:
-            msg = '{}'.format(msg)
+            msg = str(msg)
         except:
-            pass
+            try:
+                msg = '{}'.format(msg)
+            except:
+                pass
     return msg
 
 

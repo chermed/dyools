@@ -18,6 +18,10 @@ class XmlNode(object):
         for node in self.__nodes:
             node.attrib[attr] = value
 
+    def text(self, value):
+        for node in self.__nodes:
+            node.text = value
+
     @property
     def nodes(self):
         return self.__nodes

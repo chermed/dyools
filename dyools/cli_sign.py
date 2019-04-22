@@ -290,7 +290,7 @@ def _explode(inputs):
 
 @click.command()
 @click.argument('inputs', nargs=-1)
-@click.option('--select', '-s', type=click.STRING, multiple=True, help="Select lines")
+@click.option('--select', '-s', type=click.STRING, multiple=True, help="Select lines with ids like 23,56,...")
 @click.option('--add', '-a', type=click.STRING, multiple=True, nargs=2, help="Add lines")
 @click.option('--delete', is_flag=True, default=False, help="Delete lines")
 @click.option('--delete-all', is_flag=True, default=False, help="Delete all lines")
@@ -336,6 +336,7 @@ def cli_sign(
         yesterday,
         tomorrow,
         test):
+    """Save time like:  sign 0.25P1 0.75P2 --set-date 2019-01-01"""
     add = list(add) + _explode(inputs)
     r_from, r_to = __get_from_to(date, r_from, r_to, today, yesterday, tomorrow, this_week, next_week, last_week,
                                  this_month, next_month, last_month)

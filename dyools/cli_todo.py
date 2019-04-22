@@ -178,9 +178,9 @@ class Todo(object):
 
 @click.command()
 @click.argument('tasks', nargs=-1)
-@click.option('--select', '-s', type=click.STRING, multiple=True, help="Select todos")
+@click.option('--select', '-s', type=click.STRING, multiple=True, help="Select todos with ids")
 @click.option('--add', '-a', type=click.STRING, multiple=True, help="Add todos")
-@click.option('--delete', is_flag=True, default=False, help="delete todos")
+@click.option('--delete', is_flag=True, default=False, help="delete todos with ids")
 @click.option('--delete-all', is_flag=True, default=False, help="delete all todos")
 @click.option('--set-done', is_flag=True, default=False, help="Set todos as done")
 @click.option('--set-new', is_flag=True, default=False, help="Set todos as new")
@@ -208,6 +208,7 @@ def cli_todo(
         done,
         due,
         priority):
+    """Create a todo list using: todo "Task A" "Task B" """
     add = list(add) + list(tasks)
     new = new or (not done and not new)
     collection = Collection(TODO_FILE, Tools())
