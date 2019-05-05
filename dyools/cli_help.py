@@ -54,11 +54,14 @@ Misc:
     - is: check a type
     - logger: log to console using colors if possible
     - path: make operations on files and directories
+    - offset_limit: generate tuples of offset/limit
+    - operator: make operations on data, flat lists, intersection, unique, etc
     - print: print data to console like logger with header and footer
     - queue: pipeline implementation
     - random: generate some randoms
     - sample: generate some sample data
     - sftp: tools for paramiko SFTP instance
+    - slice: slice iterable objects
     - str: tools around the string objects, can also format a numeric value
     - table: a wrapper around list of lists, remove columns and rows and flat data to make the iterations
     - tool: some tools to redirect stdout/stdin, protect attributes/items and construct an Odoo domain from a string
@@ -540,6 +543,7 @@ def __eval():
     """
     Print.info(__eval.__doc__)
 
+
 @cli_help.command('inspect')
 def __inspect():
     """Inspect: inspect source code
@@ -550,6 +554,7 @@ def __inspect():
     Inspect.source(os.path.isfile)
     """
     Print.info(__inspect.__doc__)
+
 
 @cli_help.command('is')
 def __is():
@@ -580,6 +585,7 @@ All tests can be forced to raise an exception if it fails
     """
     Print.info(__is.__doc__)
 
+
 @cli_help.command('logger')
 def __logger():
     """Logger: log to console using colors if possible
@@ -597,6 +603,23 @@ def __logger():
     """
     Print.info(__logger.__doc__)
 
+
+@cli_help.command('offset_limit')
+def __offset_limit():
+    """OffsetLimit: generate tuples of offset/limit
+
+    from dyools import OffsetLimit
+    for offset, limit in OffsetLimit(0, 2, 7):
+        print(offset, limit) #[0, 2] until [6, 1]
+
+    from dyools import OffsetLimit
+    for offset, limit in OffsetLimit(0, 2):
+        print(offset, limit) #[0, 2] infinite loop
+
+    """
+    Print.info(__offset_limit.__doc__)
+
+
 @cli_help.command('operator')
 def __operator():
     """Operator: make operations on data, flat lists, intersection, unique, etc
@@ -610,6 +633,7 @@ def __operator():
 
     """
     Print.info(__operator.__doc__)
+
 
 @cli_help.command('path')
 def __path():
@@ -654,6 +678,7 @@ def __path():
     """
     Print.info(__path.__doc__)
 
+
 @cli_help.command('print')
 def __print():
     """Print: print to console, see also 'logger'
@@ -669,6 +694,7 @@ Print data with header, footer, total of item and exit if needs, just data is re
     Print.abort('test')   #color=red default exit=True and text is 'Aborted' if not provided
     """
     Print.info(__print.__doc__)
+
 
 @cli_help.command('queue')
 def __queue():
@@ -694,6 +720,7 @@ It's possible to chain Queues to construct a pipeline
     """
     Print.info(__queue.__doc__)
 
+
 @cli_help.command('random')
 def __random():
     """Random: generate some randoms
@@ -706,6 +733,7 @@ def __random():
     Random.alpha(80)
     """
     Print.info(__random.__doc__)
+
 
 @cli_help.command('sample')
 def __sample():
@@ -723,6 +751,7 @@ First argument is the number of items, the second is the number of nested items
     """
     Print.info(__sample.__doc__)
 
+
 @cli_help.command('sftp')
 def __sftp():
     """SFTP: tools for paramiko SFTP instance
@@ -732,6 +761,25 @@ def __sftp():
         ...
     """
     Print.info(__sftp.__doc__)
+
+
+@cli_help.command('slice')
+def __slice():
+    """Slice: slice iterable object
+
+    from dyools import Slice
+    s = [1, 2, 3, 4, 5, 6]
+    for item in Slice(s, 3):
+        print(item) #[1, 2, 3]
+
+    from dyools import Slice
+    s = [1, 2, 3, 4, 5, 6, 7]
+    for item, p in Slice(s, 3, with_percent=True):
+        print(item, p) #[1, 2, 3] 0.42857142857142855
+
+    """
+    Print.info(__slice.__doc__)
+
 
 @cli_help.command('str')
 def __str():
@@ -762,6 +810,7 @@ An Str instance can accept a numeric value to make some specific format
     """
     Print.info(__str.__doc__)
 
+
 @cli_help.command('table')
 def __table():
     """Table: a wrapper around list of lists, remove columns and rows and flat data to make the iterations
@@ -783,6 +832,7 @@ Accept a data like [['', 'name','age'], [1, 'John',30], [2, 'Luc',28]]
     tbl.get_flat()             #[['name', 1, 'John']]
     """
     Print.info(__table.__doc__)
+
 
 @cli_help.command('tool')
 def __tool():
@@ -819,6 +869,7 @@ def __tool():
     """
     Print.info(__tool.__doc__)
 
+
 @cli_help.command('ws')
 def __ws():
     """WS: a method to launch a python webservice based on Flask
@@ -831,6 +882,7 @@ def __ws():
     """
     Print.info(__ws.__doc__)
 
+
 @cli_help.command('xlsreader')
 def __xlsreader():
     """XlsReader: export tables from an Excel file
@@ -842,6 +894,7 @@ def __xlsreader():
     xls.get_tables() #get a dictionary, keys are name of sheets, values are tables
     """
     Print.info(__xlsreader.__doc__)
+
 
 @cli_help.command('xlswriterr')
 def __xlswriterr():
@@ -864,6 +917,7 @@ def __xlswriterr():
     xls.save()                    #save the file, xls.save('/tmp/file.xlsx')
     """
     Print.info(__xlswriterr.__doc__)
+
 
 @cli_help.command('xml')
 def __xml():
@@ -888,6 +942,7 @@ def __xml():
     #full declaration xml.query(tag, attr, attrs={}, only_parent=False, child_of=False, under=False)
     """
     Print.info(__xml.__doc__)
+
 
 @cli_help.command('yamlconfig')
 def __yamlconfig():

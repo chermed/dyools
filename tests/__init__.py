@@ -4,6 +4,8 @@ from . import test_data
 from . import test_date_range
 from . import test_eval
 from . import test_is
+from . import test_offset_limit
 from . import test_operator
+from . import test_slice
 from . import test_tool
 from . import test_xml
