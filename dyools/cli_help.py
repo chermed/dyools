@@ -57,6 +57,7 @@ Misc:
     - offset_limit: generate tuples of offset/limit
     - operator: make operations on data, flat lists, intersection, unique, etc
     - print: print data to console like logger with header and footer
+    - progress_bar: print the progression of a tasks
     - queue: pipeline implementation
     - random: generate some randoms
     - sample: generate some sample data
@@ -694,6 +695,25 @@ Print data with header, footer, total of item and exit if needs, just data is re
     Print.abort('test')   #color=red default exit=True and text is 'Aborted' if not provided
     """
     Print.info(__print.__doc__)
+
+@cli_help.command('progress_bar')
+def __progress_bar():
+    """ProgressBar: print the progression of a task
+
+    from dyools import ProgressBar
+    P = ProgressBar()
+    P.start()
+    for i in range(1000):
+        i += 1
+        P.percent = i / 1000
+        P.suffix = 'suffix'
+        P.prefix = 'prefix'
+        P.update(percent=i / 1000, suffix='suffix', prefix='prefix')
+        time.sleep(0.02)
+    P.stop()
+    # prefix [100 %] suffix
+    """
+    Print.info(__progress_bar.__doc__)
 
 
 @cli_help.command('queue')
