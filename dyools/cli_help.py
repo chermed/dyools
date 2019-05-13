@@ -48,6 +48,7 @@ Misc:
     - data: a data wrapper and normalizer, the aim of this class to compute header (list) and lines (list pf lists)
     - date: work with string dates
     - df: a simple dataframe object with operations 'add' and 'remove', each data is a Serie object
+    - env: new odoo environment inside odoo shell
     - serie: a simple Serie object
     - eval: evaluate variables within a data structure
     - inspect: inspect source code
@@ -60,6 +61,7 @@ Misc:
     - progress_bar: print the progression of a tasks
     - queue: pipeline implementation
     - random: generate some randoms
+    - rpc: construct an odoo API RPC
     - sample: generate some sample data
     - sftp: tools for paramiko SFTP instance
     - slice: slice iterable objects
@@ -531,6 +533,44 @@ Operations:
     Print.info(__serie.__doc__)
 
 
+@cli_help.command('env')
+def __env():
+    """Env: New odoo environment inside odoo shell
+
+    from dyools import Env
+    e = Env(env, odoo)
+    e = Env(odoo=odoo, dbname='DEMO')
+    # Instance operations
+    r.dump_db(dest, zip=True)
+    r.create_db(dbname=False, with_demo=False, language='fr_FR') #argument is optional
+    r.drop_db(dbname=False) #argument is optional
+    r.restore_db(path, drop=False)
+    r.list_db()
+    # Operations
+    e.get_addons(self, enterprise=False, core=False, extra=True, addons_path=False) #return tuple of lists (installed, uninstalled)
+    addons_path is used to replace the default addons_path
+    e.check_uninstalled_modules(self, enterprise=False, core=False, extra=True, addons_path=False) #exit -1 if all selected not installed
+    e.info('msg') #e.debug e.warning e.error
+    e.set_param('key', 'value')
+    e.get_param('key')
+    e.read(model, domain=[], limit=False, order=False, fields=[], **kwargs) #arguments are optionals
+    e.get(model, domain=[], limit=False, order=False, **kwargs) #get objects (recordset)
+    e.update_xmlid(record, xmlid=False) #record should be valid, the function create the xmlid in the database (__import__)
+    e.xmlid_to_object(XMLID)
+    # Module management
+    e.update_list()
+    e.install('sale,account')
+    e.upgrade('sale')
+    e.uninstall('account')
+    # Misc
+    e.fields(self, model, fields=[])
+    e.menus(self, debug=False, xmlid=False, action=False, user=False, crud=False)
+
+
+    """
+    Print.info(__env.__doc__)
+
+
 @cli_help.command('eval')
 def __eval():
     """Eval: evaluate variable in a data structure
@@ -696,6 +736,7 @@ Print data with header, footer, total of item and exit if needs, just data is re
     """
     Print.info(__print.__doc__)
 
+
 @cli_help.command('progress_bar')
 def __progress_bar():
     """ProgressBar: print the progression of a task
@@ -753,6 +794,46 @@ def __random():
     Random.alpha(80)
     """
     Print.info(__random.__doc__)
+
+
+@cli_help.command('rpc')
+def __rpc():
+    """RPC: Odoo API
+Some Odoo tools to interact with instances
+
+    from dyools import RPC
+    #protocol = 'jsonrpc+ssl' or 'jsonrpc' (default)
+    r = RPC(host='localhost', port=8069, dbname='DEMO', user='admin', password='admin', superadminpassword='admin')
+    r = RPC(server='http://localhost:8069/?dbname=DEMO&user=admin@password=admin&superadminpassword='admin')
+    r = RPC(config_name='NAME', config_file='PATH_TO_DYOOLS.YML') #config_file is optional, see cli_rpc
+    r = RPC() #get variables from environments RPC_HOST, RPC_PORT, RPC_DBNAME, RPC_USER, RPC_PASSWORD, etc
+    # Instance operations
+    r.dump_db(dest, zip=True)  #path can be a directory or a name of configuration from dyools.yml
+    r.create_db(dbname=False, with_demo=False, language='fr_FR') #arguments are optionals
+    r.drop_db(dbname=False) #argument is optional
+    r.restore_db(path, drop=False) #path can be a file path or a name of configuration from dyools.yml
+    r.list_db()
+    # Operations
+    r.login(self, user=False, password=False, dbname=False) #arguments are optionals
+    r.info('msg') #r.debug r.warning r.error
+    r.set_param('key', 'value')
+    r.get_param('key')
+    r.read(model, domain=[], limit=False, order=False, fields=[], **kwargs) #arguments are optionals
+    r.get(model, domain=[], limit=False, order=False, **kwargs) #get objects (recordset)
+    r.update_xmlid(record, xmlid=False) #record should be valid, the function create the xmlid in the database (__import__)
+    r.xmlid_to_object(XMLID)
+    # Module management
+    r.update_list()
+    r.install('sale,account')
+    r.upgrade('sale')
+    r.uninstall('account')
+    # Misc
+    r.fields(self, model, fields=[])
+    r.menus(self, debug=False, xmlid=False, action=False, user=False, crud=False)
+
+
+    """
+    Print.info(__rpc.__doc__)
 
 
 @cli_help.command('sample')

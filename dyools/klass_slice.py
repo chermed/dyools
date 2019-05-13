@@ -14,7 +14,9 @@ class Slice(object):
     def get(self):
         while True:
             res = self.data[self.index: self.index + self.step]
-            if not res:
+            if hasattr(res, 'size') and res.size == 0:
+                break
+            elif not hasattr(res, 'size') and not res:
                 break
             yield res
             self.index += self.step
@@ -31,7 +33,9 @@ class Slice(object):
     def __iter__(self):
         while True:
             res = self.data[self.index: self.index + self.step]
-            if not res:
+            if hasattr(res, 'size') and res.size == 0:
+                break
+            elif not hasattr(res, 'size') and not res:
                 break
             self.index += self.step
             if self.with_percent:

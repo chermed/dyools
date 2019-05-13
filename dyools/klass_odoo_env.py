@@ -128,7 +128,7 @@ class Env(Mixin):
         if self.list_db_disabled:
             self.list_db = False
         print('End: %s' % path)
-        size = Path.get_size_str(path)
+        size = Path.size_str(path)
         print('Backup Size: %s' % size)
         return path
 
@@ -157,7 +157,7 @@ class Env(Mixin):
                 self.drop_db()
             except:
                 print('can not drop the database')
-        size = Path.get_size_str(path)
+        size = Path.size_str(path)
         print('Restore Size: %s' % size)
         self.odoo.service.db.restore_db(self.dbname, path)
         print('End: %s dbname=%s' % (path, self.dbname))
