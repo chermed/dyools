@@ -41,6 +41,7 @@ Misc:
 -----
     - connector, job: generic connector and job utilities for the ETL, see 'etl' for more information
     - odooconnector, odoojob: odoo connector and job utilities for the ETL, see 'etl' for more information
+    - odoosimplemigrate: a simple migrate class from odoo to odoo instance
     - csvconnector, csvjob: odoo connector and job utilities for the ETL, see 'etl' for more information
     - consumer: communicate with the remote python agent (ws_agent)
     - convert: convert data type and time (MB -> GB, seconds -> hours)
@@ -394,6 +395,42 @@ def __convert():
     Convert.time(seconds, 's', 'h', r=2) #=> 1.0 (float) using a round
     """
     Print.info(__convert.__doc__)
+
+
+@cli_help.command('odoo_simple_migrate')
+def __odoo_simple_migrate():
+    """Odoo Simple Migrate: migrate data from odoo to odoo
+
+    from dyools import OdooSimpleMigrate
+    remote = RPC()
+    local = RPC()
+    m = OdooMigrate(local, remote) #from local to remote
+    m.migrate('res.partner') #migrate all partner data (all columns except access log), for relational data use xmlid by default
+    m.migrate(
+        src_model='res.users',
+        dest_model='res.partner',
+        src_context={},
+        dest_context={},
+        by=100,      #send 100 by 100
+        domain=[],   #migrate records that fit the domain
+        limit=1000,  #migrate the first 1000 records
+        offset=60,   #migrate from the offset 60
+        order='id desc',    #begin with the last created
+        fields=['name],     #fields to migrate
+        exclude_fields=[],  #exclude some fields
+        many2one_with_names=[],  #as default is xmlid, it's possible to force using names on some many2one fields
+        debug=True,  #print to console the header and data sent to server
+    )
+
+1 - Convert time types
+
+    from dyools import Convert
+    seconds = 3600 #variable in seconds (units: ["MS", "S", "M", "H"])
+    Convert.time(seconds, 's', 'm') #=> 60.0 (float)
+    Convert.time(seconds, 's', 'h') #=> 1.0 (float)
+    Convert.time(seconds, 's', 'h', r=2) #=> 1.0 (float) using a round
+    """
+    Print.info(__odoo_simple_migrate.__doc__)
 
 
 @cli_help.command('counter')

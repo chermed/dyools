@@ -28,6 +28,7 @@ from .klass_odoo_env import Env
 from .klass_odoo_job import OdooJobExtractor, OdooJobLoader, OdooJobTransformer, OdooJobError
 from .klass_odoo_mixin import Mixin
 from .klass_odoo_rpc import RPC
+from .klass_odoo_simple_migrate import OdooSimpleMigrate
 from .klass_offset_limit import OffsetLimit
 from .klass_operator import Operator
 from .klass_path import Path
