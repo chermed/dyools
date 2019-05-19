@@ -404,6 +404,7 @@ def __odoo_simple_migrate():
     from dyools import OdooSimpleMigrate
     remote = RPC()
     local = RPC()
+    #or local = Env(env, odoo)
     m = OdooMigrate(local, remote) #from local to remote
     m.migrate('res.partner') #migrate all partner data (all columns except access log), for relational data use xmlid by default
     m.migrate(
@@ -421,14 +422,6 @@ def __odoo_simple_migrate():
         many2one_with_names=[],  #as default is xmlid, it's possible to force using names on some many2one fields
         debug=True,  #print to console the header and data sent to server
     )
-
-1 - Convert time types
-
-    from dyools import Convert
-    seconds = 3600 #variable in seconds (units: ["MS", "S", "M", "H"])
-    Convert.time(seconds, 's', 'm') #=> 60.0 (float)
-    Convert.time(seconds, 's', 'h') #=> 1.0 (float)
-    Convert.time(seconds, 's', 'h', r=2) #=> 1.0 (float) using a round
     """
     Print.info(__odoo_simple_migrate.__doc__)
 
