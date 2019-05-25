@@ -9,9 +9,15 @@ from contextlib import contextmanager
 from os.path import expanduser
 
 from .klass_str import Str
+from .klass_operator import Operator
 
 
 class Path(object):
+    @classmethod
+    def join(cls, *args):
+        args = Operator.flat(args)
+        return os.path.join(*args)
+
     @classmethod
     @contextmanager
     def chdir(cls, path):

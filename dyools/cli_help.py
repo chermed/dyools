@@ -729,6 +729,7 @@ def __path():
     and add N 'eof' lines as '\\n'
 
     Path.home() #return the home folder, full path
+    Path.join('p1', 'p2', 'p3', 'file.txt')   #or pass a list
     Path.touch(''/x/y/z/txt.txt')   #create all folders if not exists and touch the file
     Path.create_dir('/x/y/z')       #create folders
     Path.clean_dir('/x/y/z')        #remove folders and files under the path
