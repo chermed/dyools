@@ -419,6 +419,7 @@ def __odoo_simple_migrate():
         order='id desc',    #begin with the last created
         fields=['name],     #fields to migrate
         exclude_fields=[],  #exclude some fields
+        include_fields=[],  #force include some fields like create_date
         many2one_with_names=[],  #as default is xmlid, it's possible to force using names on some many2one fields
         debug=True,  #print to console the header and data sent to server
     )
@@ -725,9 +726,9 @@ def __path():
         f.write('data') # create some data
 
     Path.subpaths('/x/y/z/test/txt.txt') # ['/x', '/x/y', '/x/y/z', '/x/y/z/test']
-    Path.create_file('file.txt', 'some data', eol=0) #create the file if not exists, else change the content if different
+    Path.create_file('file.txt', 'some data', eol=0, mode='wb+') #create the file if not exists, else change the content if different
     and add N 'eof' lines as '\\n'
-
+    Path.read('file.txt', mode='rb') #read a file
     Path.home() #return the home folder, full path
     Path.join('p1', 'p2', 'p3', 'file.txt')   #or pass a list
     Path.touch(''/x/y/z/txt.txt')   #create all folders if not exists and touch the file

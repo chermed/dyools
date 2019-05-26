@@ -8,21 +8,22 @@ import tempfile
 from .klass_offset_limit import OffsetLimit
 from .klass_print import Print
 
-
 logger = logging.getLogger(__name__)
 
 
-def all_fields(fields, dest_fields, exclude_fields, many2one_with_names):
+def all_fields(fields, dest_fields, exclude_fields, include_fields, many2one_with_names):
     exclude_fields = exclude_fields or []
+    include_fields = include_fields or []
     many2one_with_names = many2one_with_names or []
     ff = set(['id'])
     for f_name, f_spec in fields.items():
-        if f_name  in exclude_fields:
+        if f_name in exclude_fields:
             continue
         if f_name not in dest_fields:
             continue
         if f_name in ['__last_update', 'write_date', 'write_uid', 'create_date', 'create_uid']:
-            continue
+            if f_name not in include_fields:
+                continue
         if f_spec.get('store', True) == False:
             continue
         if f_spec.get('type') in ['many2many', 'one2many']:
@@ -49,6 +50,7 @@ class OdooSimpleMigrate(object):
                 dest_context=None,
                 fields=None,
                 exclude_fields=[],
+                include_fields=[],
                 many2one_with_names=[],
                 domain=[],
                 limit=0,
@@ -75,11 +77,13 @@ class OdooSimpleMigrate(object):
             self._fields_specs,
             dest_fields=list(self._dest.env[self._dest_model].fields_get().keys()),
             exclude_fields=exclude_fields,
+            include_fields=include_fields,
             many2one_with_names=many2one_with_names,
         )
         self._domain = domain
         self._order = order
-        self._count = self._src.env[self._src_model].with_context(self._src_context).search(self._domain, count=True, **self._kwargs)
+        self._count = self._src.env[self._src_model].with_context(self._src_context).search(self._domain, count=True,
+                                                                                            **self._kwargs)
         self._by = by or self._count
         self._debug = debug
         self._migrate()
@@ -102,7 +106,4 @@ class OdooSimpleMigrate(object):
             res = self._dest.env[self._dest_model].with_context(self._dest_context).load(self._fields, data['datas'])
             if not res.get('ids'):
                 Print.error(res)
-            Print.info('progression: [{}-{}]/{}'.format(offset, offset+limit, self._count))
-
-
-
+            Print.info('progression: [{}-{}]/{}'.format(offset, offset + limit, self._count))

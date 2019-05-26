@@ -8,8 +8,8 @@ import tempfile
 from contextlib import contextmanager
 from os.path import expanduser
 
-from .klass_str import Str
 from .klass_operator import Operator
+from .klass_str import Str
 
 
 class Path(object):
@@ -64,9 +64,11 @@ class Path(object):
         return elements if not os.path.isfile(path) else elements[:-1]
 
     @classmethod
-    def create_file(cls, path, content, eof=0):
+    def create_file(cls, path, content, eof=0, mode='wb+'):
+        mode_read = mode.replace('+', '').replace('w', 'r')
+
         def _erase_data(_path, _content):
-            with open(_path, 'wb+') as f:
+            with open(_path, mode) as f:
                 f.write(_content)
 
         if eof:
@@ -76,10 +78,15 @@ class Path(object):
             cls.create_dir(ddir)
             _erase_data(path, content)
         else:
-            with open(path, 'rb') as f:
+            with open(path, mode_read) as f:
                 c = f.read()
             if c != content:
                 _erase_data(path, content)
+
+    @classmethod
+    def read(cls, path, mode='rb'):
+        with open(path, mode) as f:
+            return f.read()
 
     @classmethod
     def home(cls):
