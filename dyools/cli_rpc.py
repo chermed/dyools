@@ -362,7 +362,7 @@ def __db_list(ctx):
 
 
 @cli_rpc.command('ping')
-@click.option('--login/--no-login', default=False, required=False, help='Specify it should ping a database or not')
+@click.option('--login/--no-login', default=False, required=False, help='Specify if it should ping a database or not')
 @click.pass_context
 def __db_ping(ctx, login):
     """Ping all servers and databases"""

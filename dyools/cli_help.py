@@ -1,13 +1,8 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
-import os
-
 import click
 
-from .klass_path import Path
 from .klass_print import Print
-
-DATABASE_PATH = Path.create_dir(os.path.join(Path.home(), '.dyvz', 'po_databases'))
 
 
 @click.group()
@@ -620,8 +615,9 @@ def __eval():
 def __inspect():
     """Inspect: inspect source code
 
-    from dyools import Inspect
+    from dyools import Inspect, Signature
     import os
+    Signature(os.path.isfile)
     Inspect.signature(os.path.isfile)
     Inspect.source(os.path.isfile)
     """
@@ -735,6 +731,7 @@ def __path():
     Path.create_dir('/x/y/z')       #create folders
     Path.clean_dir('/x/y/z')        #remove folders and files under the path
     Path.delete_dir('/x/y/z')       #remove the folder
+    Path.remove('/x/y/z')           #remove the folder or the file
     Path.clean_empty_dirs('/x/y/z') #get all directories (recursively) and delete the empty ones, if a folder contains an
     empty folder then it will be deleted also
 
@@ -757,7 +754,8 @@ def __print():
     """Print: print to console, see also 'logger'
 Print data with header, footer, total of item and exit if needs, just data is required, other arguments are False
 
-    from dyools import Print
+    from dyools import Print, P
+    P([])     #shortcut of pprint.pformat
     Print.info('test', header='Title', footer='Summary', total=False, exit=False)  #print to console the text using default color
     Print.info('test', exit=True) #force exit
     Print.success('test') #color=green
@@ -861,7 +859,7 @@ Some Odoo tools to interact with instances
     r.uninstall('account')
     # Misc
     r.fields(self, model, fields=[])
-    r.menus(self, debug=False, xmlid=False, action=False, user=False, crud=False)
+    r.menus(self, debug=False, xmlid=False, action=False, model=False, domain=False, context=False, user=False, crud=False)
 
 
     """

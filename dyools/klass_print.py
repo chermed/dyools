@@ -1,5 +1,6 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import pprint
 from enum import Enum
 
 from .klass_logger import Logger
@@ -59,3 +60,5 @@ class Print(object):
         if not data:
             data = 'Aborted !'
         cls.__show(data, header, footer, total, STATE.ERROR, exit=exit)
+
+P = pprint.pformat

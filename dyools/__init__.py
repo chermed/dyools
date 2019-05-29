@@ -32,7 +32,7 @@ from .klass_odoo_simple_migrate import OdooSimpleMigrate
 from .klass_offset_limit import OffsetLimit
 from .klass_operator import Operator
 from .klass_path import Path
-from .klass_print import Print
+from .klass_print import Print, P
 from .klass_progress_bar import ProgressBar
 from .klass_queue import Queue, Pipeline
 from .klass_random import Random
