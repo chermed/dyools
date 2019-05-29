@@ -1,21 +1,16 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import sys
+from pprint import pformat
+from prettytable import PrettyTable
 
 import click
-from past.builtins import basestring
 
 
 def clean_msg(msg):
-    if not isinstance(msg, basestring):
-        try:
-            msg = str(msg)
-        except:
-            try:
-                msg = '{}'.format(msg)
-            except:
-                pass
-    return msg
+    if isinstance(msg, PrettyTable):
+        return msg
+    return pformat(msg)
 
 
 class Logger(object):

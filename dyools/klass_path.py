@@ -117,6 +117,13 @@ class Path(object):
                     os.remove(full_path)
 
     @classmethod
+    def remove(cls, path):
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        elif os.path.isfile(path):
+            os.remove(path)
+
+    @classmethod
     def delete_dir(cls, path):
         if os.path.exists(path):
             shutil.rmtree(path)

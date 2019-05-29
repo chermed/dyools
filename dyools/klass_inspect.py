@@ -16,3 +16,5 @@ class Inspect(object):
     @classmethod
     def source(cls, callable):
         print(inspect.getsource(callable))
+
+Signature = Inspect.signature

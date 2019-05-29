@@ -285,9 +285,13 @@ class Mixin(object):
             ffields = self.get('ir.model.fields', [('model_id.model', '=', model)])
         self.show(ffields, columns)
 
-    def menus(self, debug=False, xmlid=False, action=False, user=False, crud=False):
+    def menus(self, debug=False, xmlid=False, action=False, model=False, domain=False, context=False, user=False, crud=False):
         self._require_env()
         lines = ['Applications']
+        if not action and any([model, domain, context, crud]):
+            action = True
+        if action and not any([model, domain, context, crud]):
+            model = domain = context = True
 
         def menu_show(menu, level):
             space = (' ' * 4 * (level - 1)) if level > 1 else ''
@@ -299,28 +303,28 @@ class Mixin(object):
             access = ''
             if xmlid:
                 fmt += '  XMLID={xmlid}'
-            if action or crud:
+            if action:
                 if menu.get('action'):
                     action_env, action_id = menu.get('action').split(',')
                     [action_dict] = self.env[action_env].browse(int(action_id)).read(['res_model', 'domain', 'context'])
                     if action_dict:
                         action_model = action_dict.get('res_model') or ''
                         if action_model:
-                            if action:
+                            if model:
                                 fmt += '  Model={action_model}'
                             if crud:
                                 fmt += '  ACCESS={access}'
-                                for op, key in [('create', 'C'),('read', 'R'),('write', 'U'),('unlink', 'D')]:
+                                for op, key in [('create', 'C'), ('read', 'R'), ('write', 'U'), ('unlink', 'D')]:
                                     try:
-                                        if self.env['ir.model.access'].check(action_model,op,False):
+                                        if self.env['ir.model.access'].check(action_model, op, False):
                                             access += key
                                     except:
                                         pass
                         action_domain = action_dict.get('domain') or []
-                        if action_domain and action:
+                        if action_domain and domain:
                             fmt += '  Domain={action_domain}'
                         action_context = action_dict.get('context') or {}
-                        if action_context and action:
+                        if action_context and context:
                             fmt += '  Context={action_context}'
             line = fmt.format(
                 space=space,

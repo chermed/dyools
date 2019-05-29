@@ -161,28 +161,32 @@ def cli_rpc(ctx, database, host, port, user, password, superadminpassword, proto
                 Print.error('Cannot connect to {fmt_login}'.format(fmt_login=fmt_login(current_config)))
         return rpc
 
-    def new_rpc(config_name, login=False):
+    def new_rpc(config_name, login=False, state={}):
         if config_name not in configs:
             Print.error('The configuration [{%s}] not found'.format(config_name))
         new_config = configs[config_name]
         _check_production(new_config)
         try:
-            Print.info('Try to connect to the server {fmt_connect}'.format(fmt_connect=fmt_connect(current_config)))
-            internal_rpc = RPC(**current_config)
-            current_config.update(dict(version=internal_rpc.version))
+            Print.info('Try to connect to the server {fmt_connect}'.format(fmt_connect=fmt_connect(new_config)))
+            internal_rpc = RPC(**new_config)
+            new_config.update(dict(version=internal_rpc.version))
             internal_rpc.odoo.config['auto_context'] = not no_context
-            Print.success('Connected to {fmt_connect}'.format(fmt_connect=fmt_connect(current_config)))
+            Print.success('Connected to {fmt_connect}'.format(fmt_connect=fmt_connect(new_config)))
+            state['connected'] = True
             if login:
                 try:
-                    Print.info('Try to login to {fmt_login}'.format(fmt_login=fmt_login(current_config)))
+                    Print.info('Try to login to {fmt_login}'.format(fmt_login=fmt_login(new_config)))
                     internal_rpc.login()
-                    Print.success('Connected to {fmt_login}'.format(fmt_login=fmt_login(current_config)))
+                    Print.success('Connected to {fmt_login}'.format(fmt_login=fmt_login(new_config)))
+                    state['logged'] = True
                 except:
                     internal_rpc = False
-                    Print.error('Cannot connect to {fmt_login}'.format(fmt_login=fmt_login(current_config)))
+                    Print.error('Cannot connect to {fmt_login}'.format(fmt_login=fmt_login(new_config)))
+                    state['logged'] = False
         except:
             internal_rpc = False
-            Print.error('Cannot connect to server {fmt_connect}'.format(fmt_connect=fmt_connect(current_config)))
+            Print.error('Cannot connect to server {fmt_connect}'.format(fmt_connect=fmt_connect(new_config)))
+            state['connected'] = False
         return internal_rpc
 
     def update_list():
@@ -365,14 +369,14 @@ def __db_ping(ctx, login):
     configs = ctx.obj['configs']
 
     def _check(config_name, config_values):
-        ok = False
+        state = dict(connected=False, logged=False)
         try:
-            rpc = ctx.obj['new_rpc'](config_name, login=login)
-            ok = rpc and True or False
+            ctx.obj['new_rpc'](config_name, login=login, state=state)
         except:
             pass
         server = _config_to_server(config_values)
-        config_values.update(dict(connected=ok, server=server))
+        config_values.update(dict(server=server))
+        config_values.update(state)
 
     threads = []
     for k, v in configs.items():
@@ -380,7 +384,11 @@ def __db_ping(ctx, login):
         t.start()
         threads.append(t)
     [t.join() for t in threads]
-    Data(configs, header=['name', 'connected', 'server'], name='name').show()
+    if login:
+        header = ['name', 'connected', 'logged', 'server']
+    else:
+        header = ['name', 'connected', 'server']
+    Data(configs, header=header, name='name').show()
 
 
 @cli_rpc.command('db_dump')
@@ -572,7 +580,7 @@ def __func(ctx, model, func, args, arg, ids):
 def __fields(ctx, model, fields, grep):
     """Fields of a model"""
     rpc = ctx.obj['action_login']()
-    fields = ['name', 'type'] + Operator.split_and_flat(',', fields)
+    fields = Operator.unique(['name', 'type', 'relation'] + Operator.split_and_flat(',', fields))
     Data(rpc.env[model].fields_get(), header=fields, name='name').show(grep=grep)
 
 
@@ -580,12 +588,15 @@ def __fields(ctx, model, fields, grep):
 @click.option('--debug/--no-debug', default=False, required=False, help='Show also the debug menus')
 @click.option('--xmlid/--no-xmlid', default=False, required=False, help='Show the menus XmlIds')
 @click.option('--action/--no-action', default=False, required=False, help='Show th related actions')
+@click.option('--model/--no-model', default=False, required=False, help='Show the model')
+@click.option('--domain/--no-domain', default=False, required=False, help='Show the domain')
+@click.option('--context/--no-context', default=False, required=False, help='Show the context')
 @click.option('--crud/--no-crud', default=False, required=False, help='Show the CRUD')
 @click.pass_context
-def __menus(ctx, debug, xmlid, action, crud):
+def __menus(ctx, debug, xmlid, action, model, domain, context, crud):
     """Show menus"""
     rpc = ctx.obj['action_login']()
-    rpc.menus(debug=debug, xmlid=xmlid, action=action, crud=crud)
+    rpc.menus(debug=debug, xmlid=xmlid, action=action, model=model, domain=domain, context=context, crud=crud)
 
 
 ######################################################################
