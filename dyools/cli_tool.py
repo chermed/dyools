@@ -9,9 +9,8 @@ from .klass_data import Data
 from .klass_path import Path
 from .klass_print import Print
 from .klass_random import Random
-from .klass_tool import Tool
+from .klass_tool import Tool, ENCRYPTED
 
-CRYPTED_FILE = b'__ENCRYPTED_FILE__;'
 
 
 @click.group()
@@ -75,6 +74,13 @@ def __decrypt(strings, password):
     """Decrypt strings using a password"""
     password = password or getpass()
     for text in strings:
+        try:
+            text = text.encode('utf8')
+        except:
+            pass
+        if not text.startswith(ENCRYPTED):
+            Print.error('The text is not encrypted')
+        text = text[len(ENCRYPTED):]
         Print.debug('Source of [%s] is : ' % text, )
         Print.info(Tool.decrypt(text, password), )
 
@@ -86,6 +92,12 @@ def __encrypt(strings, password):
     """Crypt strings with a password"""
     password = password or getpass()
     for text in strings:
+        try:
+            text = text.encode('utf8')
+        except :
+            pass
+        if text.startswith(ENCRYPTED):
+            Print.error('The string is already encrypted')
         Print.debug('Result of [%s] is : ' % text, )
         Print.info(Tool.encrypt(text, password), )
 
@@ -104,9 +116,9 @@ def __decrypt_file(paths, password):
     password = password or getpass()
     for path in paths:
         data = Path.read(path)
-        if not data.startswith(CRYPTED_FILE):
+        if not data.startswith(ENCRYPTED):
             Print.error('The file [%s] is not encrypted' % path)
-        data = data[len(CRYPTED_FILE):]
+        data = data[len(ENCRYPTED):]
         decrypted_path = '{}.decrypted'.format(path)
         Path.write(decrypted_path, Tool.decrypt(data, password))
         Print.info('The file is decrypted to [%s]' % decrypted_path)
@@ -126,8 +138,8 @@ def __encrypt_file(paths, password):
     password = password or getpass()
     for path in paths:
         data = Path.read(path)
-        if data.startswith(CRYPTED_FILE):
+        if data.startswith(ENCRYPTED):
             Print.error('The file [%s] is already encrypted' % path)
         crypted_path = '{}.encrypted'.format(path)
-        Path.write(crypted_path, CRYPTED_FILE + Tool.encrypt(data, password))
+        Path.write(crypted_path, Tool.encrypt(data, password))
         Print.info('The file is encrypted to [%s]' % crypted_path)

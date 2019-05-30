@@ -9,6 +9,8 @@ from io import StringIO
 
 from simplecrypt import encrypt, decrypt
 
+ENCRYPTED = b'__ENCRYPTED__;'
+
 
 class Tool(object):
     @classmethod
@@ -52,10 +54,12 @@ class Tool(object):
         password = password or getpass()
         cipher = encrypt(password, message)
         encoded_cipher = b64encode(cipher)
-        return encoded_cipher
+        return ENCRYPTED + encoded_cipher
 
     @classmethod
     def decrypt(cls, message, password):
+        if message.startswith(ENCRYPTED):
+            message = message[len(ENCRYPTED):]
         cipher = b64decode(message)
         plaintext = decrypt(password, cipher)
         return plaintext
