@@ -1,11 +1,17 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+from getpass import getpass
+
 import click
 from faker import Faker
 
 from .klass_data import Data
+from .klass_path import Path
 from .klass_print import Print
 from .klass_random import Random
+from .klass_tool import Tool
+
+CRYPTED_FILE = b'__ENCRYPTED_FILE__;'
 
 
 @click.group()
@@ -60,3 +66,68 @@ def __fake(name, keys):
                 Print.info('{:.<30}{}'.format(attr, getattr(fake, attr)() if not keys else '*'))
             except:
                 pass
+
+
+@cli_tool.command('decrypt')
+@click.argument('strings', nargs=-1)
+@click.option('--password', '-p', type=click.STRING, help="Password")
+def __decrypt(strings, password):
+    """Decrypt strings using a password"""
+    password = password or getpass()
+    for text in strings:
+        Print.debug('Source of [%s] is : ' % text, )
+        Print.info(Tool.decrypt(text, password), )
+
+
+@cli_tool.command('encrypt')
+@click.argument('strings', nargs=-1)
+@click.option('--password', '-p', type=click.STRING, help="Password")
+def __encrypt(strings, password):
+    """Crypt strings with a password"""
+    password = password or getpass()
+    for text in strings:
+        Print.debug('Result of [%s] is : ' % text, )
+        Print.info(Tool.encrypt(text, password), )
+
+
+@cli_tool.command('decrypt_file')
+@click.argument('paths', type=click.Path(
+    exists=True,
+    file_okay=True,
+    dir_okay=False,
+    readable=True,
+    resolve_path=True
+), nargs=-1)
+@click.option('--password', '-p', type=click.STRING, help="Password")
+def __decrypt_file(paths, password):
+    """Decrypt files using a password"""
+    password = password or getpass()
+    for path in paths:
+        data = Path.read(path)
+        if not data.startswith(CRYPTED_FILE):
+            Print.error('The file [%s] is not encrypted' % path)
+        data = data[len(CRYPTED_FILE):]
+        decrypted_path = '{}.decrypted'.format(path)
+        Path.write(decrypted_path, Tool.decrypt(data, password))
+        Print.info('The file is decrypted to [%s]' % decrypted_path)
+
+
+@cli_tool.command('encrypt_file')
+@click.argument('paths', type=click.Path(
+    exists=True,
+    file_okay=True,
+    dir_okay=False,
+    readable=True,
+    resolve_path=True
+), nargs=-1)
+@click.option('--password', '-p', type=click.STRING, help="Password")
+def __encrypt_file(paths, password):
+    """Encrypt files with a password"""
+    password = password or getpass()
+    for path in paths:
+        data = Path.read(path)
+        if data.startswith(CRYPTED_FILE):
+            Print.error('The file [%s] is already encrypted' % path)
+        crypted_path = '{}.encrypted'.format(path)
+        Path.write(crypted_path, CRYPTED_FILE + Tool.encrypt(data, password))
+        Print.info('The file is encrypted to [%s]' % crypted_path)

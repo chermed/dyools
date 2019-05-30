@@ -21,7 +21,7 @@ CLI: command line interfaces :
     - rpc: interacts with odoo instances
     - sign: save time passed on a project by date and show it on a calendar
     - todo: save tasks to do
-    - tool: contains random cli and fake command line interfaces
+    - tool: contains random cli, encrypt/decrypt and fake command line interfaces
     - ws_agent: launch a python agent on a server, iby default launched on 0.0.0.0:5000 (use the class Consumer to
     interact with it)
     - xml: receive an xml in the STDIN and parse it (a separator may be used) and offer the possibility to extract xpaths
@@ -63,7 +63,7 @@ Misc:
     - slice: slice iterable objects
     - str: tools around the string objects, can also format a numeric value
     - table: a wrapper around list of lists, remove columns and rows and flat data to make the iterations
-    - tool: some tools to redirect stdout/stdin, protect attributes/items and construct an Odoo domain from a string
+    - tool: some tools to redirect stdout/stdin, encrypt/decrypt, protect attributes/items and construct an Odoo domain from a string
     - ws: launch an python remote server, see also 'ws_agent'
     - xlsreader: export tables from an Excel file
     - xlswriterr: create an excel file
@@ -724,11 +724,13 @@ def __path():
     Path.subpaths('/x/y/z/test/txt.txt') # ['/x', '/x/y', '/x/y/z', '/x/y/z/test']
     Path.create_file('file.txt', 'some data', eol=0, mode='wb+') #create the file if not exists, else change the content if different
     and add N 'eof' lines as '\\n'
-    Path.read('file.txt', mode='rb') #read a file
+    Path.read('file.txt', mode='rb')           #read a file
+    Path.write('file.txt', 'data', mode='wb+') #write to a file
     Path.home() #return the home folder, full path
     Path.join('p1', 'p2', 'p3', 'file.txt')   #or pass a list
     Path.touch(''/x/y/z/txt.txt')   #create all folders if not exists and touch the file
     Path.create_dir('/x/y/z')       #create folders
+    Path.create_parent_dir('/x/y/z')#create parent directory of a path
     Path.clean_dir('/x/y/z')        #remove folders and files under the path
     Path.delete_dir('/x/y/z')       #remove the folder
     Path.remove('/x/y/z')           #remove the folder or the file
@@ -970,6 +972,10 @@ def __tool():
     """Tool: some tools to redirect stdout/stdin, protect attributes/items and construct an Odoo domain from a string
 
     from dyools import Tool
+
+    Tool.encrypt('message', 'password')
+    Tool.decrypt('xxxx', 'password')
+
     output = {}
     with Tool.stdout_in_memory(output):
         print('test')

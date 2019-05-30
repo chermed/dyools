@@ -1,16 +1,15 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import pprint
 import sys
-from pprint import pformat
-from prettytable import PrettyTable
 
 import click
 
 
 def clean_msg(msg):
-    if isinstance(msg, PrettyTable):
-        return msg
-    return pformat(msg)
+    if isinstance(msg, (dict, list, set)):
+        return pprint.pformat(msg)
+    return '{}'.format(msg)
 
 
 class Logger(object):

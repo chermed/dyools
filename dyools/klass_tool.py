@@ -2,8 +2,12 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import sys
 import traceback
+from base64 import b64encode, b64decode
 from contextlib import contextmanager
+from getpass import getpass
 from io import StringIO
+
+from simplecrypt import encrypt, decrypt
 
 
 class Tool(object):
@@ -42,6 +46,19 @@ class Tool(object):
             raise
         finally:
             [setattr(obj, k, v) for k, v in backup_data.items()]
+
+    @classmethod
+    def encrypt(cls, message, password):
+        password = password or getpass()
+        cipher = encrypt(password, message)
+        encoded_cipher = b64encode(cipher)
+        return encoded_cipher
+
+    @classmethod
+    def decrypt(cls, message, password):
+        cipher = b64decode(message)
+        plaintext = decrypt(password, cipher)
+        return plaintext
 
     @classmethod
     @contextmanager

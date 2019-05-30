@@ -61,4 +61,5 @@ class Print(object):
             data = 'Aborted !'
         cls.__show(data, header, footer, total, STATE.ERROR, exit=exit)
 
+
 P = pprint.pformat

@@ -84,6 +84,12 @@ class Path(object):
                 _erase_data(path, content)
 
     @classmethod
+    def write(cls, path, content, mode='wb+'):
+        cls.touch(path)
+        with open(path, mode) as f:
+            return f.write(content)
+
+    @classmethod
     def read(cls, path, mode='rb'):
         with open(path, mode) as f:
             return f.read()
@@ -104,6 +110,12 @@ class Path(object):
     def create_dir(cls, path):
         if path:
             os.makedirs(path, exist_ok=True)
+        return path
+
+    @classmethod
+    def create_parent_dir(cls, path):
+        if path:
+            path = cls.create_dir(os.path.dirname(path))
         return path
 
     @classmethod

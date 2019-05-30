@@ -217,7 +217,7 @@ def __list_configurations(ctx, grep=False, index=False):
     configs = ctx.obj['configs']
     data = Data(configs)
     tbl = data.get_pretty_table(add_index=True, grep=grep, index=index)
-    Print.info(tbl, header="List of configurations", total=len(tbl._rows))
+    Print.info(tbl, header="List of configurations", total=len(tbl._rows), )
 
 
 @cli_rpc.command('create')
@@ -635,9 +635,9 @@ def __arch(ctx, view):
         view = rpc.get_ir_ui_view([('id', '=', int(view))])
     else:
         view = rpc.xmlid_to_object(view)
-    Print.info(Xml.SEPARATOR)
-    Print.info(Xml(view.arch).pretty())
-    Print.info(Xml.SEPARATOR)
+    Print.info(Xml.SEPARATOR, )
+    Print.info(Xml(view.arch).pretty(), )
+    Print.info(Xml.SEPARATOR, )
 
 
 @cli_rpc.command('combined')
@@ -651,9 +651,9 @@ def __combined(ctx, view):
     else:
         view = rpc.xmlid_to_object(view)
     xml = view.read_combined(['arch'])['arch']
-    Print.info(Xml.SEPARATOR)
-    Print.info(Xml(xml).pretty())
-    Print.info(Xml.SEPARATOR)
+    Print.info(Xml.SEPARATOR, )
+    Print.info(Xml(xml).pretty(), )
+    Print.info(Xml.SEPARATOR, )
 
 
 ######################################################################

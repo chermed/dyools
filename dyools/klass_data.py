@@ -159,4 +159,4 @@ class Data(object):
                 add_index=add_index,
                 grep=grep,
                 index=index),
-            header=header, footer=footer, exit=exit)
+            header=header, footer=footer, exit=exit, )
