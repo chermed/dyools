@@ -7,7 +7,28 @@ from contextlib import contextmanager
 from getpass import getpass
 from io import StringIO
 
-from simplecrypt import encrypt, decrypt
+from .klass_print import Print
+
+try:
+    from simplecrypt import encrypt, decrypt
+except Exception as e:
+    Print.warning('The encryption is disabled, please install simple-crypt')
+
+
+    def encrypt(password, message):
+        try:
+            message = message.encode('utf8')
+        except:
+            pass
+        return message
+
+
+    def decrypt(password, message):
+        try:
+            message = message.encode('utf8')
+        except:
+            pass
+        return message
 
 ENCRYPTED = b'__ENCRYPTED__;'
 

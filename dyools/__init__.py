@@ -1,3 +1,4 @@
+from .cli_deploy import cli_deploy
 from .cli_etl import cli_etl
 from .cli_help import cli_help
 from .cli_job import cli_job

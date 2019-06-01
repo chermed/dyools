@@ -49,3 +49,13 @@ class TestTool(TestCase):
         self.assertEqual(c('a = 1 and b == 4'), ['&', ('a', '=', 1), ('b', '=', 4)])
         self.assertEqual(c('a = 1 or b == 4'), ['|', ('a', '=', 1), ('b', '=', 4)])
         self.assertEqual(c("a = '1' or b == 4"), ['|', ('a', '=', '1'), ('b', '=', 4)])
+
+    def test_encrypt_decrypt(self):
+        from dyools import Tool
+        s = 'Hello world'
+        b = b'Hello world'
+        password='my password'
+        s_encrypted = Tool.encrypt(s, password)
+        b_encrypted = Tool.encrypt(b, password)
+        self.assertEqual(Tool.decrypt(s_encrypted, password), s.encode('utf8'))
+        self.assertEqual(Tool.decrypt(b_encrypted, password), b)
