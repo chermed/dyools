@@ -18,6 +18,7 @@ from .klass_csv_connector import CsvConnector
 from .klass_csv_job import CsvJobExtractor
 from .klass_data import Data
 from .klass_date import Date
+from .klass_default_value import DefaultValue
 from .klass_df import DF
 from .klass_eval import Eval
 from .klass_inspect import Inspect, Signature

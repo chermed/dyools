@@ -11,6 +11,7 @@ from threading import Thread
 import click
 from past.types import basestring
 
+from .klass_date import Date
 from .klass_data import Data
 from .klass_eval import Eval
 from .klass_odoo_rpc import RPC, CONFIG_FILE
@@ -107,6 +108,7 @@ def fmt_connect(config):
 def cli_rpc(ctx, database, host, port, user, password, superadminpassword, protocol, timeout, config, load, mode, yes,
             no_context, debug):
     """Load configuration and connect to an Odoo instance"""
+    Print.info('Now: {}'.format(Date()))
     yaml_obj = YamlConfig(config, create_if_not_exists=True)
     configs = yaml_obj.get_data()
     ctx.obj = {}

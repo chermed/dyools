@@ -2,6 +2,7 @@ from . import test_date
 from . import test_convert
 from . import test_data
 from . import test_date_range
+from . import test_default_value
 from . import test_eval
 from . import test_is
 from . import test_offset_limit

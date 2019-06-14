@@ -43,6 +43,7 @@ Misc:
     - counter: a helper to compute the elapsed time
     - data: a data wrapper and normalizer, the aim of this class to compute header (list) and lines (list pf lists)
     - date: work with string dates
+    - default_value: work with default values on objects
     - df: a simple dataframe object with operations 'add' and 'remove', each data is a Serie object
     - env: new odoo environment inside odoo shell
     - serie: a simple Serie object
@@ -525,6 +526,18 @@ Some global format are :
     """
     Print.info(__date.__doc__)
 
+
+@cli_help.command('default_value')
+def __default_value():
+    """DefaultValue: work with default data on objects
+
+    from dyools import DefaultValue
+    obj = type('obj', (object,), {'a': 10, 'b': False})
+    dv_obj = DefaultValue(obj) # (obj, defaults={False: '', None: ''}, types=()) #types on which apply the default values
+    dv_obj.a == 10   #True
+    dv_obj.b == ''   #True
+    """
+    Print.info(__default_value.__doc__)
 
 @cli_help.command('df')
 def __df():

@@ -1,7 +1,5 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
-import time
-
 import click
 import paramiko as paramiko
 
@@ -23,7 +21,7 @@ def cli_deploy(config):
     # username = 'debian'
     # port = 22
     # password = 'debian'
-    # src = '/Users/cherkaouimohamed/Dropbox/Bitbucket/dyools/dyools/cli_etl.py'
+    # src = '/cli_etl.py'
     # dst = '/tmp/x.py'
     client = paramiko.SSHClient()
     client.load_system_host_keys()
