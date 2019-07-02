@@ -79,6 +79,10 @@ class Tool(object):
 
     @classmethod
     def decrypt(cls, message, password):
+        try:
+            message = message.encode('utf8')
+        except:
+            pass
         if message.startswith(ENCRYPTED):
             message = message[len(ENCRYPTED):]
         cipher = b64decode(message)
