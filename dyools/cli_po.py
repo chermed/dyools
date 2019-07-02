@@ -70,6 +70,6 @@ def __translate(path, lang, untranslated):
             continue
         default = entry.msgstr or db.get(entry.msgid, '')
         value = click.prompt('{}% - {}'.format(po.percent_translated(), entry.msgid), default)
-        entry.msgstr = value
+        entry.msgstr = value or entry.msgid
     po.save(path)
     Print.success('{}% - Translation is finished'.format(po.percent_translated()))
