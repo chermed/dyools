@@ -12,7 +12,7 @@ from .klass_print import Print
 try:
     from simplecrypt import encrypt, decrypt
 except Exception as e:
-    Print.warning('The encryption is disabled, please install simple-crypt')
+    Print.warning('The encryption is disabled, please install simple-crypt "pip install simple-crypt"')
 
 
     def encrypt(password, message):
