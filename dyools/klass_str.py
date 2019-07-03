@@ -92,16 +92,19 @@ class Str(object):
         return self.to_str(txt)
 
     def to_number(self, ttype=float):
+        sign = 1
         txt = self.arg.strip().replace(',', '.')
-        txt = [c for c in txt if c.isdigit() or c == '.']
-        txt = ''.join(txt)
-        return ttype(float(txt))
+        txt = ''.join([c for c in txt if c.isdigit() or c in ['.', '-']])
+        if txt.startswith('-'):
+            sign = -1
+            txt = txt.replace('-', '')
+        return ttype(float(txt) * sign)
 
     def get_first_number(self, ttype=float):
         txt = self.arg.strip().replace(',', '.')
         tmp = ''
         for c in txt:
-            if c.isdigit() or c == '.':
+            if c.isdigit() or c in ['.', '-']:
                 tmp += c
             elif tmp:
                 break
@@ -111,7 +114,7 @@ class Str(object):
         txt = self.arg[::-1].strip().replace(',', '.')
         tmp = ''
         for c in txt:
-            if c.isdigit() or c == '.':
+            if c.isdigit() or c in ['.', '-']:
                 tmp += c
             elif tmp:
                 break

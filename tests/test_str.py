@@ -66,6 +66,9 @@ class TestStr(TestCase):
         self.assertEqual(Str('_3.4e_89_e_78__._8g_78').get_first_number(), 3.4)
         self.assertEqual(Str('_34e_89_e_78__._8g_78').get_last_number(), 78)
         self.assertEqual(Str('_34e_89_e_78__._8g_7,8').get_last_number(), 7.8)
+        self.assertEqual(Str('_34e_89_e_78__._8g_7,8').get_last_number(), 7.8)
+        self.assertEqual(Str('  + 0,02  ').to_number(), 0.02)
+        self.assertEqual(Str('  - 0,02  ').to_number(), -0.02)
 
     def test_to_range(self):
         from dyools import Str
