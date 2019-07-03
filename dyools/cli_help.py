@@ -1040,6 +1040,7 @@ def __xlsreader():
     from dyools import XlsReader
     xls = XlsReader('example.xls', sheets=['Sheet1'], options={'formatting_info':True)} #sheets and options (xlrd) are optional
     xls = XlsReader('example.xls', right_bottom=True} #if the first cell is empty
+    xls = XlsReader('example.xls', to_bottom=True} #if it should scroll to bottom
     xls.get_data()   #get a dictionary, keys are name of sheets, values are content
     xls.get_tables() #get a dictionary, keys are name of sheets, values are tables
     """

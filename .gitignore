@@ -2,7 +2,7 @@
 # Created by https://www.gitignore.io/api/pycharm,eclipse,osx,windows,linux,python,git,svn
 
 ### Eclipse ###
-
+*.xls
 .metadata
 bin/
 tmp/

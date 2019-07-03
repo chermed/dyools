@@ -27,6 +27,7 @@ class XlsReader(object):
             self.sheets = [self.sheets]
         self.data = {}
         self.right_bottom = kwargs.get('right_bottom', False)
+        self.to_bottom = kwargs.get('to_bottom', False)
         self.options = kwargs.get('options', dict(formatting_info=True))
 
     def _nomalize_sheets(self, sheets):
@@ -64,13 +65,24 @@ class XlsReader(object):
 
         def find_bounds(name, i, j):
             row_start, col_start, = i, j
-            while True:
-                i += 1
-                if i == self.data[name]['nrows']:
-                    break
-                value = self.data[name]['content'][i][j]
-                if is_empty(value):
-                    break
+            if self.to_bottom:
+                last_i = i
+                while True:
+                    i += 1
+                    if i == self.data[name]['nrows']:
+                        break
+                    value = self.data[name]['content'][i][j]
+                    if value:
+                        last_i = i + 1
+                i = last_i
+            else:
+                while True:
+                    i += 1
+                    if i == self.data[name]['nrows']:
+                        break
+                    value = self.data[name]['content'][i][j]
+                    if is_empty(value):
+                        break
             row_stop = i - 1
             i = row_start
             while True:
@@ -153,3 +165,11 @@ class XlsReader(object):
             if not sheets or sheet_name in sheets:
                 tables[sheet_name] = self.data[sheet_name]['tables']
         return tables
+
+# from pprint import pprint as pp
+# x = XlsReader('../2.xls', 'options', to_bottom=True)
+# tables = x.get_tables()
+# pp(tables)
+# table = tables['options'][0]
+# table.remove_rows(1)
+# pp(table.get_data())
