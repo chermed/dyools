@@ -19,7 +19,10 @@ class Table(object):
     def merge(cls, *tbls):
         data = []
         for tbl in tbls:
-            data.extend(tbl.get_data())
+            if isinstance(tbl, (list, tuple)):
+                [data.extend(x.get_data()) for x in tbl]
+            else:
+                data.extend(tbl.get_data())
         return cls(data)
 
     def _normalize_idx(self, idx):

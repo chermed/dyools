@@ -5,9 +5,9 @@ import os
 import xlrd
 from past.builtins import basestring
 
-from .klass_date import Date
-from .klass_table import Table
-
+# from .klass_date import Date
+# from .klass_table import Table
+from dyools import Date, Table
 
 class XlsReader(object):
     def __init__(self, *args, **kwargs):
@@ -173,3 +173,9 @@ class XlsReader(object):
 # table = tables['options'][0]
 # table.remove_rows(1)
 # pp(table.get_data())
+
+# from pprint import pprint as pp
+# x = XlsReader('../2.xls', 'options')
+# tables = Table.merge(x.get_tables()['options'][0], x.get_tables()['options'][1], x.get_tables()['options'][2])
+# tables.remove_rows(1)
+# pp(tables.get_data())
