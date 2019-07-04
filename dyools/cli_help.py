@@ -976,6 +976,7 @@ Accept a data like [['', 'name','age'], [1, 'John',30], [2, 'Luc',28]]
     tbl.remove_cols([2])
     tbl.remove_rows([2])
     tbl.get_flat()             #[['name', 1, 'John']]
+    new_tbl = Table.merge(tbl, tbl2, tbl3) #merge many tables
     """
     Print.info(__table.__doc__)
 

@@ -15,6 +15,13 @@ class Table(object):
         self.index_rows = [[x for x in range(self.nrows)]]
         self.index_cols = [[x for x in range(self.ncols)]]
 
+    @classmethod
+    def merge(cls, *tbls):
+        data = []
+        for tbl in tbls:
+            data.extend(tbl.get_data())
+        return cls(data)
+
     def _normalize_idx(self, idx):
         if not isinstance(idx, (list, tuple)):
             idx = [idx]
