@@ -39,6 +39,7 @@ from .klass_progress_bar import ProgressBar
 from .klass_queue import Queue, Pipeline
 from .klass_random import Random
 from .klass_sample import Sample
+from .klass_sequence import Sequence
 from .klass_serie import Serie
 from .klass_sftp import SFTP
 from .klass_slice import Slice

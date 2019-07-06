@@ -13,7 +13,13 @@ DATE_FORMAT, DATETIME_FORMAT = "%Y-%m-%d", "%Y-%m-%d %H:%M:%S"
 
 
 class Env(Mixin):
-    def __init__(self, env=False, odoo=False, dbname=False, verbose=True):
+    def __init__(self, env=False, odoo=False, dbname=False, verbose=True, gg={}):
+        if not env and 'env' in gg:
+            env = gg['env']
+        if not odoo and 'odoo' in gg:
+            odoo = gg['odoo']
+        if not dbname and 'dbname' in gg:
+            dbname = gg['dbname']
         if isinstance(env, basestring):
             dbname = env
             env = False

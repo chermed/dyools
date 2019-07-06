@@ -9,5 +9,6 @@ from . import test_offset_limit
 from . import test_operator
 from . import test_slice
 from . import test_path
+from . import test_sequence
 from . import test_tool
 from . import test_xml

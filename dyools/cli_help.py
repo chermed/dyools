@@ -60,6 +60,7 @@ Misc:
     - random: generate some randoms
     - rpc: construct an odoo API RPC
     - sample: generate some sample data
+    - sequence: generate a sequence
     - sftp: tools for paramiko SFTP instance
     - slice: slice iterable objects
     - str: tools around the string objects, can also format a numeric value
@@ -579,6 +580,7 @@ def __env():
     from dyools import Env
     e = Env(env, odoo)
     e = Env(odoo=odoo, dbname='DEMO')
+    e = Env(gg=globals())
     # Instance operations
     r.dump_db(dest, zip=True)
     r.create_db(dbname=False, with_demo=False, language='fr_FR') #argument is optional
@@ -896,6 +898,33 @@ First argument is the number of items, the second is the number of nested items
     Sample.dict_of_ints(6, 4)
     """
     Print.info(__sample.__doc__)
+
+
+
+@cli_help.command('sequence')
+def __sequence():
+    """Sequence: generate a sequence
+The get the next value, use the methods .next(), and to get the current value, use the property .value
+
+    from dyools import Sequence
+    s1 = Sequence()     #sequence starts with 0
+    s2 = Sequence(10)   #sequence starts with 10
+    s3 = Sequence(10, step=2)     #sequence starts with 10 with a step of 2
+    s4 = Sequence('E', padding=6) #sequence of characters with a padding of 6
+    # default params are :
+        start=1,
+        fill='0',
+        prefix='',
+        prefix_padding=0,
+        prefix_fill='0',
+        suffix='',
+        suffix_padding=0,
+        suffix_fill='0',
+        padding=0,
+        stop=None,
+        step=1
+    """
+    Print.info(__sequence.__doc__)
 
 
 @cli_help.command('sftp')
