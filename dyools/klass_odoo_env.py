@@ -97,6 +97,13 @@ class Env(Mixin):
         else:
             sys.exit(0)
 
+    def recompute(self, records, fields=[]):
+        self.env.clear()
+        fields = [fields] if isinstance(fields, basestring) else fields
+        for field in fields:
+            self.env.add_todo(records._fields[field], records)
+        self.env[records._name].recompute()
+
     def commit(self):
         self._require_env()
         self.env.cr.commit()

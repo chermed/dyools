@@ -581,13 +581,16 @@ def __env():
     e = Env(env, odoo)
     e = Env(odoo=odoo, dbname='DEMO')
     e = Env(gg=globals())
+
     # Instance operations
     r.dump_db(dest, zip=True)
     r.create_db(dbname=False, with_demo=False, language='fr_FR') #argument is optional
     r.drop_db(dbname=False) #argument is optional
     r.restore_db(path, drop=False)
     r.list_db()
+
     # Operations
+    e.recompute(e['sale.order'].search([]), ['amount_total', 'amount_untaxed', 'amount_tax'])
     e.get_addons(self, enterprise=False, core=False, extra=True, addons_path=False) #return tuple of lists (installed, uninstalled)
     addons_path is used to replace the default addons_path
     e.check_uninstalled_modules(self, enterprise=False, core=False, extra=True, addons_path=False) #exit -1 if all selected not installed
@@ -598,16 +601,16 @@ def __env():
     e.get(model, domain=[], limit=False, order=False, **kwargs) #get objects (recordset)
     e.update_xmlid(record, xmlid=False) #record should be valid, the function create the xmlid in the database (__import__)
     e.xmlid_to_object(XMLID)
+
     # Module management
     e.update_list()
     e.install('sale,account')
     e.upgrade('sale')
     e.uninstall('account')
+
     # Misc
     e.fields(self, model, fields=[])
     e.menus(self, debug=False, xmlid=False, action=False, user=False, crud=False)
-
-
     """
     Print.info(__env.__doc__)
 
