@@ -507,6 +507,8 @@ Some global format are :
     d.relativedelta(days=7, months=-2, years=1, hours=3, minutes=20, seconds=-30) #return a string after transformation
     d.apply(days=7, months=-2, years=1, hours=3, minutes=20, seconds=-30)         #return an object of Str
     d.set_format('%d') #change the default format
+    d.to_last_day()    #apply the last day of the month and return the object Date
+    d.to_fist_day()    #apply the first day of the month and return the object Date
     d.last_day()    #return a string of last day format: default format
     d.fist_day()    #return a string of first day format: default format
     d.to_datetime() #return a datetime object

@@ -32,8 +32,11 @@ class TestDate(TestCase):
 
     def test_date_last_first_day(self):
         from dyools import Date
+        from datetime import date
         self.assertEqual(Date("2019-10-03").last_day(), "2019-10-31")
         self.assertEqual(Date("2019-10-03").first_day(), "2019-10-01")
+        self.assertEqual(Date("2019-10-03").to_first_day().to_date()ƒî, date(2019,10,1))
+        self.assertEqual(Date("2019-10-03").to_last_day().to_date(), date(2019,10,31))
 
     def test_date_between(self):
         from dyools import Date

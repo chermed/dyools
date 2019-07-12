@@ -83,6 +83,14 @@ class Date(object):
         dt = self.dt + relativedelta(day=calendar.monthrange(self.dt.year, self.dt.month)[1])
         return dt.strftime(self.fmt)
 
+    def to_first_day(self):
+        self.dt = self.dt + relativedelta(day=1)
+        return self
+
+    def to_last_day(self):
+        self.dt = self.dt + relativedelta(day=calendar.monthrange(self.dt.year, self.dt.month)[1])
+        return self
+
     def to_datetime(self):
         return self.dt
 
