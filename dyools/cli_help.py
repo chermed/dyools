@@ -44,6 +44,7 @@ Misc:
     - data: a data wrapper and normalizer, the aim of this class to compute header (list) and lines (list pf lists)
     - date: work with string dates
     - default_value: work with default values on objects
+    - dataframe: a wrapper of pandas dataframe
     - df: a simple dataframe object with operations 'add' and 'remove', each data is a Serie object
     - env: new odoo environment inside odoo shell
     - serie: a simple Serie object
@@ -553,6 +554,20 @@ def __df():
     d.remove('index')
     """
     Print.info(__df.__doc__)
+
+@cli_help.command('dataframe')
+def __dataframe():
+    """DataFrame: a wrapper on pandas datagrames
+
+    from dyools import DataFrame
+    d = DataFrame(df=pandas_df, env=env_odoo, logger=log_odoo) #if no logger: take module logger
+    #d = DataFrame(df, env=False, logger=False)
+    d.to_odoo('res.partner', csv_path='res.partner.csv')
+    #d.to_odoo(model, by=100, csv_path=False, ctx={'tracking_disable': True})
+    d.enumerate_by('name', new_column='enum', concat_column='name_enum') #starts with 1 by group
+    #d.enumerate_by(column, new_column='enum', concat_column=False)
+    """
+    Print.info(__dataframe.__doc__)
 
 
 @cli_help.command('serie')

@@ -17,6 +17,7 @@ from .klass_counter import Counter
 from .klass_csv_connector import CsvConnector
 from .klass_csv_job import CsvJobExtractor
 from .klass_data import Data
+from .klass_dataframe import DataFrame
 from .klass_date import Date
 from .klass_default_value import DefaultValue
 from .klass_df import DF
