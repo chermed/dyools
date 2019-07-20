@@ -85,7 +85,7 @@ class Signs(object):
         sign.id = self.current_id
         self.signs.append(sign)
 
-    def show(self, signs, calendar, r_from, r_to):
+    def show(self, signs, calendar, show_totals, r_from, r_to):
         tbl_data = []
         for sign in signs or self.signs:
             if not signs:
@@ -99,7 +99,7 @@ class Signs(object):
             ])
         len_tbl_data = len(tbl_data)
         if calendar:
-            self.show_calendar(tbl_data)
+            self.show_calendar(tbl_data, show_totals)
         else:
             tbl_data = [["ID", "DATE", "PROJECT", "TIME"]] + tbl_data
             tbl_data.append([
@@ -150,7 +150,7 @@ class Signs(object):
         self.signs = []
         self.current_id = 0
 
-    def show_calendar(self, data):
+    def show_calendar(self, data, show_totals):
         projects = sorted(list(set(map(lambda x: x[2], data))))
         dates = sorted(list(set(map(lambda x: x[1], data))))
         tbl_data = [['DATE', "DAY"] + [self.tools.set_color(p, None, 3) for p in projects] + [
@@ -160,14 +160,15 @@ class Signs(object):
             gathered_data = self.get_lines(data, date, projects)
             for i in range(0, len(gathered_data)):
                 totals[i] += gathered_data[i]
-            tbl_data.append([
-                                date,
-                                DAYS[date.weekday()]
-                            ] + [
-                                self.tools.set_color(x or "", None, 3) for x in gathered_data[:-1]
-                            ] + [
-                                self.tools.set_color(gathered_data[-1], None, 1)
-                            ])
+            if not show_totals:
+                tbl_data.append([
+                                    date,
+                                    DAYS[date.weekday()]
+                                ] + [
+                                    self.tools.set_color(x or "", None, 3) for x in gathered_data[:-1]
+                                ] + [
+                                    self.tools.set_color(gathered_data[-1], None, 1)
+                                ])
         tbl_data += [[self.tools.set_color(x, None, 1) for x in (['TOTAL', ""] + totals)]]
         table_instance = SingleTable(tbl_data)
         table_instance.inner_heading_row_border = True
@@ -299,6 +300,7 @@ def _explode(inputs):
 @click.option('--set-date', type=click.STRING, help="Set a date for lines")
 @click.option('--list', '-l', 'r_list', is_flag=True, default=False, help="List lines")
 @click.option('--calendar', is_flag=True, default=False, help="Show calendar")
+@click.option('--totals', 'show_totals', is_flag=True, default=False, help="Show just totals")
 @click.option('--date', type=click.STRING, help="filter by date")
 @click.option('--from', 'r_from', type=click.STRING, help="filter by date start")
 @click.option('--to', 'r_to', type=click.STRING, help="filter by date end")
@@ -323,6 +325,7 @@ def cli_sign(
         set_date,
         r_list,
         calendar,
+        show_totals,
         date,
         r_from,
         r_to,
@@ -373,5 +376,5 @@ def cli_sign(
         date, r_from, r_to, this_week, next_week, last_week, this_month, next_month, last_month)
     r_list = r_list or (not select and not add)
     if r_list:
-        collection.show(signs=signs, calendar=calendar, r_from=r_from, r_to=r_to)
+        collection.show(signs=signs, calendar=calendar, show_totals=show_totals, r_from=r_from, r_to=r_to)
     collection.dump()
