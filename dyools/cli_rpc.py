@@ -319,7 +319,7 @@ def __delete(ctx, grep):
     if not name:
         Print.error('please retry with an other grep !')
     click.confirm('Are you sure you want to delete the configuration [{}]'.format(name), abort=True)
-    ctx.obj['config_obj'].delete(name=name)
+    ctx.obj['config_obj'].delete(_name=name)
     ctx.obj['config_obj'].dump()
     __list_configurations(ctx, False, index=index)
 
