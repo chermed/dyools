@@ -11,10 +11,10 @@ from .klass_print import Print
 logger = logging.getLogger(__name__)
 
 
-def all_fields(fields, dest_fields, exclude_fields, include_fields, many2one_with_names):
+def all_fields(fields, dest_fields, exclude_fields, include_fields, many2x_with_names):
     exclude_fields = exclude_fields or []
     include_fields = include_fields or []
-    many2one_with_names = many2one_with_names or []
+    many2x_with_names = many2x_with_names or []
     ff = set(['id'])
     for f_name, f_spec in fields.items():
         if f_name in exclude_fields:
@@ -24,12 +24,12 @@ def all_fields(fields, dest_fields, exclude_fields, include_fields, many2one_wit
         if f_name in ['__last_update', 'write_date', 'write_uid', 'create_date', 'create_uid']:
             if f_name not in include_fields:
                 continue
-        if f_spec.get('store', True) == False:
+        if not f_spec.get('store'):
             continue
-        if f_spec.get('type') in ['many2many', 'one2many']:
+        if f_spec.get('type') == 'one2many':
             continue
-        if f_spec.get('type') == 'many2one':
-            if f_name not in many2one_with_names:
+        if f_spec.get('type') in ['many2one', 'many2many']:
+            if f_name not in many2x_with_names:
                 f_name = '{}/id'.format(f_name)
         ff.add(f_name)
     return list(ff)
@@ -51,7 +51,7 @@ class OdooSimpleMigrate(object):
                 fields=None,
                 exclude_fields=[],
                 include_fields=[],
-                many2one_with_names=[],
+                many2x_with_names=[],
                 domain=[],
                 limit=0,
                 offset=0,
@@ -78,7 +78,7 @@ class OdooSimpleMigrate(object):
             dest_fields=list(self._dest.env[self._dest_model].fields_get().keys()),
             exclude_fields=exclude_fields,
             include_fields=include_fields,
-            many2one_with_names=many2one_with_names,
+            many2x_with_names=many2x_with_names,
         )
         self._domain = domain
         self._order = order
@@ -93,17 +93,19 @@ class OdooSimpleMigrate(object):
         if self._order:
             kwargs['order'] = self._order
         if self._debug:
-            Print.debug('Header : {}'.format(pprint.pformat(self._fields)))
+            Print.debug('header : {}'.format(pprint.pformat(self._fields)))
         for offset, limit in OffsetLimit(0, self._by, self._count):
             kwargs.update(dict(offset=offset, limit=limit))
-
             data = self._src.env[self._src_model].with_context(self._src_context).search(self._domain, **kwargs)
             if isinstance(data, list):
                 data = self._src.env[self._src_model].with_context(self._src_context).browse(data)
             data = data.export_data(self._fields, raw_data=False)
             if self._debug:
-                Print.debug('Data : {}'.format(pprint.pformat(data['datas'])))
+                Print.debug('data : {}'.format(pprint.pformat(data['datas'])))
             res = self._dest.env[self._dest_model].with_context(self._dest_context).load(self._fields, data['datas'])
             if not res.get('ids'):
                 Print.error(res)
+            if self._debug:
+                Print.debug('ids : {}'.format(pprint.pformat(res.get('ids'))))
             Print.info('progression: [{}-{}]/{}'.format(offset, offset + limit, self._count))
+

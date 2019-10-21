@@ -36,7 +36,7 @@ Misc:
 -----
     - connector, job: generic connector and job utilities for the ETL, see 'etl' for more information
     - odooconnector, odoojob: odoo connector and job utilities for the ETL, see 'etl' for more information
-    - odoosimplemigrate: a simple migrate class from odoo to odoo instance
+    - odoo_simple_migrate: a simple migrate class from odoo to odoo instance
     - csvconnector, csvjob: odoo connector and job utilities for the ETL, see 'etl' for more information
     - consumer: communicate with the remote python agent (ws_agent)
     - convert: convert data type and time (MB -> GB, seconds -> hours)
@@ -418,7 +418,7 @@ def __odoo_simple_migrate():
         fields=['name],     #fields to migrate
         exclude_fields=[],  #exclude some fields
         include_fields=[],  #force include some fields like create_date
-        many2one_with_names=[],  #as default is xmlid, it's possible to force using names on some many2one fields
+        many2x_with_names=[],  #as default is xmlid, it's possible to force using names on some many2one fields
         debug=True,  #print to console the header and data sent to server
     )
     """
