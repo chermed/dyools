@@ -9,12 +9,71 @@ from .klass_offset_limit import OffsetLimit
 from .klass_print import Print
 
 logger = logging.getLogger(__name__)
+READ_CREATE_OR_WRITE = 'ReadCreateOrWrite'
+EXPORT_IMPORT_XMLID = 'ExportImportXmlID'
 
 
-def all_fields(fields, dest_fields, exclude_fields, include_fields, many2x_with_names):
+def _get_domain_from(line, fnames):
+    domain = []
+    for fname in fnames:
+        domain.append((fname, '=', line[fname]))
+    return domain
+
+
+def clean_data_from_create_write(src, dest, fields, line):
+    new_line = {}
+    for k, v in line.items():
+        for fname, f_spec in fields.items():
+            if fname != k:
+                continue
+            new_line[fname] = line[fname]
+            if f_spec.get('type') == 'many2one':
+                if v:
+                    res_data = dest.env[f_spec.get('relation')].search([('name', '=', v[1])])
+                    if len(res_data) == 1:
+                        new_line[fname] = res_data[0]
+                    else:
+                        Print.error('error when seraching the record model={} value={} results={}'.format(
+                            f_spec.get('relation'),
+                            v[1],
+                            res_data
+                        ))
+                else:
+                    new_line[fname] = False
+            if f_spec.get('type') == 'many2many':
+                v = v or []
+                src_data = src.env[f_spec.get('relation')].browse(v).name_get()
+                res_ids = []
+                for res_id, res_name in src_data:
+                    dest_data = dest.env[f_spec.get('relation')].search([('name', '=', res_name)])
+                    if len(dest_data) == 1:
+                        res_ids.append(dest_data[0])
+                    else:
+                        Print.error('error when seraching the record model={} value={} results={}'.format(
+                            f_spec.get('relation'),
+                            v[1],
+                            dest_data
+                        ))
+                new_line[fname] = [(6, 0, res_ids)]
+    return new_line
+
+
+def apply_strategy_on_fields(fields, fnames, strategy, many2x_with_names):
+    ff = set()
+    for fname, f_spec in fields.items():
+        if not fname not in fnames:
+            continue
+        if f_spec.get('type') in ['many2one', 'many2many']:
+            if strategy == EXPORT_IMPORT_XMLID:
+                if f_name not in many2x_with_names:
+                    f_name = '{}/id'.format(f_name)
+        ff.append(fname)
+    return list(ff)
+
+
+def all_fields(fields, dest_fields, exclude_fields, include_fields):
     exclude_fields = exclude_fields or []
     include_fields = include_fields or []
-    many2x_with_names = many2x_with_names or []
     ff = set(['id'])
     for f_name, f_spec in fields.items():
         if f_name in exclude_fields:
@@ -28,9 +87,6 @@ def all_fields(fields, dest_fields, exclude_fields, include_fields, many2x_with_
             continue
         if f_spec.get('type') == 'one2many':
             continue
-        if f_spec.get('type') in ['many2one', 'many2many']:
-            if f_name not in many2x_with_names:
-                f_name = '{}/id'.format(f_name)
         ff.add(f_name)
     return list(ff)
 
@@ -48,6 +104,7 @@ class OdooSimpleMigrate(object):
                 dest_model=None,
                 src_context=None,
                 dest_context=None,
+                based_on_fields=[],
                 fields=None,
                 exclude_fields=[],
                 include_fields=[],
@@ -78,6 +135,13 @@ class OdooSimpleMigrate(object):
             dest_fields=list(self._dest.env[self._dest_model].fields_get().keys()),
             exclude_fields=exclude_fields,
             include_fields=include_fields,
+        )
+        self._based_on_fields = list(filter(lambda x: x in self._fields, based_on_fields or []))
+        self._strategy = READ_CREATE_OR_WRITE if self._based_on_fields else EXPORT_IMPORT_XMLID
+        self._fields = apply_strategy_on_fields(
+            fields=self._fields_specs,
+            fnames=self._fields,
+            strategy=self._strategy,
             many2x_with_names=many2x_with_names,
         )
         self._domain = domain
@@ -94,18 +158,49 @@ class OdooSimpleMigrate(object):
             kwargs['order'] = self._order
         if self._debug:
             Print.debug('header : {}'.format(pprint.pformat(self._fields)))
+        Print.info('processing migration from model <{}> to <{}> count={} strategy=<{}>'.format(
+            self._src_model,
+            self._dest_model,
+            self._count,
+            self._strategy,
+        ))
         for offset, limit in OffsetLimit(0, self._by, self._count):
             kwargs.update(dict(offset=offset, limit=limit))
             data = self._src.env[self._src_model].with_context(self._src_context).search(self._domain, **kwargs)
             if isinstance(data, list):
                 data = self._src.env[self._src_model].with_context(self._src_context).browse(data)
-            data = data.export_data(self._fields, raw_data=False)
-            if self._debug:
-                Print.debug('data : {}'.format(pprint.pformat(data['datas'])))
-            res = self._dest.env[self._dest_model].with_context(self._dest_context).load(self._fields, data['datas'])
-            if not res.get('ids'):
-                Print.error(res)
-            if self._debug:
-                Print.debug('ids : {}'.format(pprint.pformat(res.get('ids'))))
+            if self._strategy == EXPORT_IMPORT_XMLID:
+                data = data.export_data(self._fields, raw_data=False)
+                if self._debug:
+                    Print.debug('data : {}'.format(pprint.pformat(data['datas'])))
+                res = self._dest.env[self._dest_model].with_context(self._dest_context).load(self._fields,
+                                                                                             data['datas'])
+                if not res.get('ids'):
+                    Print.error(res)
+                if self._debug:
+                    Print.debug('result ids : {}'.format(pprint.pformat(res.get('ids'))))
+            else:
+                data = data.read(self._fields)
+                if self._debug:
+                    Print.debug('data : {}'.format(pprint.pformat(data)))
+                for line in data:
+                    line = clean_data_from_create_write(self._src, self._dest, self._fields_specs, line)
+                    based_on_domain = _get_domain_from(line, self._based_on_fields)
+                    exists = self._dest.env[self._dest_model].with_context(self._dest_context).search(based_on_domain)
+                    if isinstance(exists, list):
+                        exists = self._dest.env[self._dest_model].with_context(self._dest_context).browse(exists)
+                    if len(exists) == 1:
+                        exists.with_context(self._dest_context).write(line)
+                        if self._debug:
+                            Print.debug('updating the record model={} ids={}'.format(self._dest_model, exists.ids))
+                    elif exists:
+                        Print.error('found many records for model={} domain={} ids={}'.format(
+                            self._dest_model,
+                            based_on_domain,
+                            exists.ids,
+                        ))
+                    else:
+                        exists = self._dest.env[self._dest_model].with_context(self._dest_context).create(line)
+                        if self._debug:
+                            Print.debug('creating a new record model={} ids={}'.format(self._dest_model, exists))
             Print.info('progression: [{}-{}]/{}'.format(offset, offset + limit, self._count))
-
