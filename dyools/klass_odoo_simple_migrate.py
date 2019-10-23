@@ -1,10 +1,11 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import logging
-import os
 import pprint
-import tempfile
 
+from odoorpc.error import RPCError
+
+from .klass_counter import Counter
 from .klass_offset_limit import OffsetLimit
 from .klass_print import Print
 
@@ -20,54 +21,66 @@ def _get_domain_from(line, fnames):
     return domain
 
 
-def clean_data_from_create_write(src, dest, fields, line):
-    new_line = {}
+def clean_data_from_create_write(obj, src, dest, fields, line):
     for k, v in line.items():
         for fname, f_spec in fields.items():
             if fname != k:
                 continue
-            new_line[fname] = line[fname]
             if f_spec.get('type') == 'many2one':
                 if v:
-                    res_data = dest.env[f_spec.get('relation')].search([('name', '=', v[1])])
+                    try:
+                        res_data = dest.env[f_spec.get('relation')].name_search(v[1], operator='=', limit=1)
+                        res_data = [x[0] for x in res_data]
+                    except RPCError:
+                        res_data = dest.env[f_spec.get('relation')].search([('name', '=', v[1])])
                     if len(res_data) == 1:
-                        new_line[fname] = res_data[0]
+                        line[fname] = res_data[0]
                     else:
-                        Print.error('error when seraching the record model={} value={} results={}'.format(
-                            f_spec.get('relation'),
-                            v[1],
-                            res_data
-                        ))
+                        Print.error(
+                            'error when searching the record model=<{}> field=<{}> value=<{}> results={}'.format(
+                                f_spec.get('relation'),
+                                fname,
+                                v[1],
+                                res_data
+                            ))
+                        if obj._debug:
+                            Print.debug('data = {}'.format(pprint.pformat(line)))
                 else:
-                    new_line[fname] = False
+                    line[fname] = False
             if f_spec.get('type') == 'many2many':
                 v = v or []
                 src_data = src.env[f_spec.get('relation')].browse(v).name_get()
                 res_ids = []
                 for res_id, res_name in src_data:
-                    dest_data = dest.env[f_spec.get('relation')].search([('name', '=', res_name)])
+                    try:
+                        dest_data = dest.env[f_spec.get('relation')].name_search(res_name, operator='=', limit=1)
+                        dest_data = [x[0] for x in dest_data]
+                    except RPCError:
+                        dest_data = dest.env[f_spec.get('relation')].search([('name', '=', res_name)])
                     if len(dest_data) == 1:
                         res_ids.append(dest_data[0])
                     else:
-                        Print.error('error when seraching the record model={} value={} results={}'.format(
-                            f_spec.get('relation'),
-                            v[1],
-                            dest_data
-                        ))
-                new_line[fname] = [(6, 0, res_ids)]
-    return new_line
+                        Print.error(
+                            'error when seraching the record model=<{}> field=<{}> value=<{}> results={}'.format(
+                                f_spec.get('relation'),
+                                fname,
+                                v[1],
+                                dest_data
+                            ))
+                line[fname] = [(6, 0, res_ids)]
+    return line
 
 
 def apply_strategy_on_fields(fields, fnames, strategy, many2x_with_names):
     ff = set()
     for fname, f_spec in fields.items():
-        if not fname not in fnames:
+        if fname not in fnames:
             continue
         if f_spec.get('type') in ['many2one', 'many2many']:
             if strategy == EXPORT_IMPORT_XMLID:
-                if f_name not in many2x_with_names:
-                    f_name = '{}/id'.format(f_name)
-        ff.append(fname)
+                if fname not in many2x_with_names:
+                    fname = '{}/id'.format(fname)
+        ff.add(fname)
     return list(ff)
 
 
@@ -93,10 +106,10 @@ def all_fields(fields, dest_fields, exclude_fields, include_fields):
 
 class OdooSimpleMigrate(object):
 
-    def __init__(self, src, dest, path=None):
+    def __init__(self, src, dest):
         self._src = src
         self._dest = dest
-        self._path = path or (os.path.join(tempfile.gettempdir(), 'odoo_migrate'))
+        self._counter = Counter()
 
     def migrate(self,
                 model=None,
@@ -184,7 +197,7 @@ class OdooSimpleMigrate(object):
                 if self._debug:
                     Print.debug('data : {}'.format(pprint.pformat(data)))
                 for line in data:
-                    line = clean_data_from_create_write(self._src, self._dest, self._fields_specs, line)
+                    line = clean_data_from_create_write(self, self._src, self._dest, self._fields_specs, line)
                     based_on_domain = _get_domain_from(line, self._based_on_fields)
                     exists = self._dest.env[self._dest_model].with_context(self._dest_context).search(based_on_domain)
                     if isinstance(exists, list):
@@ -203,4 +216,6 @@ class OdooSimpleMigrate(object):
                         exists = self._dest.env[self._dest_model].with_context(self._dest_context).create(line)
                         if self._debug:
                             Print.debug('creating a new record model={} ids={}'.format(self._dest_model, exists))
-            Print.info('progression: [{}-{}]/{}'.format(offset, offset + limit, self._count))
+            self._counter.print(
+                title='progression: [{}-{}]/{} model from <{}> to <{}>'.format(offset, offset + limit, self._count,
+                                                                               self._src_model, self._dest_model))

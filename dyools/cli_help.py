@@ -415,11 +415,12 @@ def __odoo_simple_migrate():
         limit=1000,  #migrate the first 1000 records
         offset=60,   #migrate from the offset 60
         order='id desc',    #begin with the last created
-        fields=['name],     #fields to migrate
-        exclude_fields=[],  #exclude some fields
-        include_fields=[],  #force include some fields like create_date
+        based_on_fields=['name],     #base on fields is used to chnage strategy from ImportExportXmlID to ReadCreateOrWrite
+        fields=['name],        #fields to migrate
+        exclude_fields=[],     #exclude some fields
+        include_fields=[],     #force include some fields like create_date
         many2x_with_names=[],  #as default is xmlid, it's possible to force using names on some many2one fields
-        debug=True,  #print to console the header and data sent to server
+        debug=True,            #print to console the header and data sent to server
     )
     """
     Print.info(__odoo_simple_migrate.__doc__)
