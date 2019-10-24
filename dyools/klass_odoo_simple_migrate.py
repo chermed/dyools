@@ -12,6 +12,8 @@ from .klass_print import Print
 logger = logging.getLogger(__name__)
 READ_CREATE_OR_WRITE = 'ReadCreateOrWrite'
 EXPORT_IMPORT_XMLID = 'ExportImportXmlID'
+REQUIRE_EXACT, REQUIRE_SUP, REQUIRE_SUP_OR_EXACT = 'exact', 'sup', 'exact_or_sup'
+REQUIRES = [REQUIRE_EXACT, REQUIRE_SUP, REQUIRE_SUP_OR_EXACT]
 
 
 def _get_domain_from(line, fnames):
@@ -128,6 +130,7 @@ class OdooSimpleMigrate(object):
                 order=None,
                 by=None,
                 debug=False,
+                require=False,
                 ):
         kwargs = {}
         if offset: kwargs['offset'] = offset
@@ -159,9 +162,12 @@ class OdooSimpleMigrate(object):
         )
         self._domain = domain
         self._order = order
+        Print.info('counting records from the model <{}>'.format(self._src_model))
         self._count = self._src.env[self._src_model].with_context(self._src_context).search(self._domain, count=True,
                                                                                             **self._kwargs)
         self._by = by or self._count
+        assert require in ([False] + REQUIRES), 'The require should be in the list %s' % REQUIRES
+        self._require = require
         self._debug = debug
         self._migrate()
 
@@ -171,11 +177,12 @@ class OdooSimpleMigrate(object):
             kwargs['order'] = self._order
         if self._debug:
             Print.debug('header : {}'.format(pprint.pformat(self._fields)))
-        Print.info('processing migration from model <{}> to <{}> count={} strategy=<{}>'.format(
+        Print.info('processing migration from model <{}> to <{}> count={} strategy=<{}> require=<{}>'.format(
             self._src_model,
             self._dest_model,
             self._count,
             self._strategy,
+            self._require,
         ))
         for offset, limit in OffsetLimit(0, self._by, self._count):
             kwargs.update(dict(offset=offset, limit=limit))
@@ -219,3 +226,14 @@ class OdooSimpleMigrate(object):
             self._counter.print(
                 title='progression: [{}-{}]/{} model from <{}> to <{}>'.format(offset, offset + limit, self._count,
                                                                                self._src_model, self._dest_model))
+        Print.info('processing finished for model <{}> to <{}> total migrated={} item(s)'.format(self._src_model, self._dest_model, self._count))
+        if self._require:
+            nb_items = self._dest.env[self._dest_model].with_context(self._dest_context).search(self._domain,
+                                                                                                count=True,
+                                                                                                **self._kwargs)
+            if (self._require == REQUIRE_EXACT and self._count != nb_items) or (
+                    self._require == REQUIRE_SUP and self._count >= nb_items) or (
+                    self._require == REQUIRE_SUP_OR_EXACT and self._count > nb_items):
+                Print.error('error: required: ({} item(s) of model <{}>), found: ({} item(s) of model <{}>)'.format(
+                    self._count, self._src_model, nb_items, self._dest_model
+                ))
