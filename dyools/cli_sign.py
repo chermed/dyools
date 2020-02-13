@@ -32,7 +32,12 @@ Path.touch(SIGN_FILE)
 
 
 class Tools:
+    def __init__(self, with_color):
+        self.with_color = with_color
+
     def set_color(self, txt, obj, level=2):
+        if not self.with_color:
+            return txt
         if not level or level > 2:
             c = 'autoblue'
         elif level == 2:
@@ -313,6 +318,7 @@ def _explode(inputs):
 @click.option('--this-month', is_flag=True, default=False, help="filter by this month")
 @click.option('--last-month', is_flag=True, default=False, help="filter by last month")
 @click.option('--next-month', is_flag=True, default=False, help="filter by next month")
+@click.option('--color', 'with_color', is_flag=True, default=False, help="filter by next month")
 @click.option('--test', type=click.INT, default=0, help="Play some tests")
 def cli_sign(
         inputs,
@@ -338,6 +344,7 @@ def cli_sign(
         today,
         yesterday,
         tomorrow,
+        with_color,
         test):
     """Save time like:  sign 0.25P1 0.75P2 --set-date 2019-01-01"""
     add = list(add) + _explode(inputs)
@@ -347,7 +354,7 @@ def cli_sign(
         set_date = parser.parse(set_date).date()
     if date:
         date = parser.parse(date).date()
-    collection = Signs(SIGN_FILE, Tools(), test)
+    collection = Signs(SIGN_FILE, Tools(with_color=with_color), test)
     signs = collection.find(select, r_from, r_to)
     if delete_all:
         collection.reset()
