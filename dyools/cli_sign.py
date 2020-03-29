@@ -355,7 +355,10 @@ def cli_sign(
     if date:
         date = parser.parse(date).date()
     collection = Signs(SIGN_FILE, Tools(with_color=with_color), test)
-    signs = collection.find(select, r_from, r_to)
+    if select or r_from or r_to:
+        signs = collection.find(select, r_from, r_to)
+    else:
+        signs = []
     if delete_all:
         collection.reset()
     for time, project in add:
