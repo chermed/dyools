@@ -5,7 +5,7 @@ from setuptools import setup
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, 'README.rst')).read()
 
-version = '0.20.13'
+version = '0.20.14'
 
 setup(
     name='dyools',
@@ -29,7 +29,8 @@ setup(
         'pyaml',
         'odoorpc',
         'python-dateutil',
-        'flask',
+        'flask==1.1.1',
+        'jinja2==2.10.1',
         'prettytable',
         'click',
         'xlsxwriter',
@@ -43,6 +44,7 @@ setup(
         'colorclass',
         'dateparser',
         'paramiko',
+        'werkzeug==0.15'
     ],
     setup_requires=['pytest-runner', ],
     tests_require=['pytest', ],
