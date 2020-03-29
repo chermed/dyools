@@ -270,10 +270,6 @@ def __get_from_to(date, r_from, r_to, today, yesterday, tomorrow, this_week, nex
         r_from = parser.parse(r_from).date()
     if r_to and not isinstance(r_to, type(datetime.today().date())):
         r_to = parser.parse(r_to).date()
-    if not r_from:
-        r_from = _today + relativedelta(days=0)
-    if not r_to:
-        r_to = _today + relativedelta(days=0)
     click.secho('From: %s To: %s' % (r_from, r_to), fg="green")
     return r_from, r_to
 
@@ -355,10 +351,7 @@ def cli_sign(
     if date:
         date = parser.parse(date).date()
     collection = Signs(SIGN_FILE, Tools(with_color=with_color), test)
-    if select or r_from or r_to:
-        signs = collection.find(select, r_from, r_to)
-    else:
-        signs = []
+    signs = collection.find(select, r_from, r_to)
     if delete_all:
         collection.reset()
     for time, project in add:
