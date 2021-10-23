@@ -13,7 +13,10 @@ from pprint import pprint
 
 import psutil as psutil
 import requests
-from flask import Flask, request, Response
+try:
+    from flask import Flask, request, Response
+except:
+    pass
 from past.builtins import basestring
 
 from .klass_convert import Convert

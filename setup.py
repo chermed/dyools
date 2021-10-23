@@ -5,7 +5,7 @@ from setuptools import setup
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, "README.rst")).read()
 
-version = "0.21.0"
+version = "0.21.1"
 
 setup(
     name="dyools",
@@ -29,8 +29,6 @@ setup(
         "pyaml",
         "odoorpc",
         "python-dateutil",
-        "flask==1.1.1",
-        "jinja2==2.10.1",
         "prettytable",
         "click",
         "xlsxwriter",
