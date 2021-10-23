@@ -3,52 +3,54 @@ import os
 from setuptools import setup
 
 here = os.path.abspath(os.path.dirname(__file__))
-README = open(os.path.join(here, 'README.rst')).read()
+README = open(os.path.join(here, "README.rst")).read()
 
-version = '0.20.15'
+version = "0.21.0"
 
 setup(
-    name='dyools',
+    name="dyools",
     version=version,
     description="dyools",
     long_description=README,
     classifiers=[],
-    keywords='dyools',
-    author='me',
-    author_email='me@example.org',
-    url='https://example.org',
-    license='LGPL v3',
+    keywords="dyools",
+    author="Mohamed CHERKAOUI",
+    author_email="chermed@gmail.com",
+    url="https://example.org",
+    license="LGPL v3",
     zip_safe=True,
-    py_modules=['dyools'],
+    py_modules=["dyools"],
     include_package_data=True,
     package_dir={},
-    packages=['dyools'],
+    packages=["dyools"],
     install_requires=[
-        'click',
-        'future',
-        'pyaml',
-        'odoorpc',
-        'python-dateutil',
-        'flask==1.1.1',
-        'jinja2==2.10.1',
-        'prettytable',
-        'click',
-        'xlsxwriter',
-        'xlrd',
-        'requests',
-        'psutil',
-        'faker',
-        'lxml',
-        'polib',
-        'terminaltables',
-        'colorclass',
-        'dateparser',
-        'paramiko',
-        'werkzeug==0.15'
+        "click",
+        "future",
+        "pyaml",
+        "odoorpc",
+        "python-dateutil",
+        "flask==1.1.1",
+        "jinja2==2.10.1",
+        "prettytable",
+        "click",
+        "xlsxwriter",
+        "xlrd",
+        "requests",
+        "psutil",
+        "faker",
+        "lxml",
+        "polib",
+        "terminaltables",
+        "colorclass",
+        "dateparser",
+        "paramiko",
     ],
-    setup_requires=['pytest-runner', ],
-    tests_require=['pytest', ],
-    entry_points='''
+    setup_requires=[],
+    tests_require=[
+        "pytest",
+        "pytest-runner",
+    ],
+    entry_points="""
         [console_scripts]
         ws_agent=dyools:cli_ws_agent
         rpc=dyools:cli_rpc
@@ -61,6 +63,5 @@ setup(
         job=dyools:cli_job
         dhelp=dyools:cli_help
         deploy=dyools:cli_deploy
-    ''',
-
+    """,
 )
