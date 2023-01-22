@@ -11,7 +11,6 @@ setup(
     name="dyools",
     version=version,
     description="dyools",
-    long_description=README,
     classifiers=[],
     keywords="dyools",
     author="Mohamed CHERKAOUI",
