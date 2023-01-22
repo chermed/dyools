@@ -1,0 +1,4 @@
+0.21.2
+======
+
+Fix click multiple=True and default is a string
