@@ -10,7 +10,7 @@ setup(
     name="dyools",
     version=version,
     description="dyools",
-    long_description=open('README.txt').read() + '\n\n' + open('CHANGELOG.txt').read(),
+    long_description=open('README.txt').read(),
     classifiers=[],
     keywords="dyools",
     author="Mohamed CHERKAOUI",
