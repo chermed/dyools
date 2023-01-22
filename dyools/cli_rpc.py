@@ -536,7 +536,7 @@ def __params(ctx, key, value):
 @click.option('domain', '-d', type=click.STRING, default='', help="Domain")
 @click.option('limit', '-l', type=click.INT, default=0, help="Limit")
 @click.option('order', '-o', type=click.STRING, default='', help="Order")
-@click.option('fields', '-f', multiple=True, type=click.STRING, default='', help="Fields to show")
+@click.option('fields', '-f', multiple=True, type=click.STRING, default=[], help="Fields to show")
 @click.pass_context
 def __data(ctx, model, domain, limit, order, fields):
     """Show records"""
@@ -576,7 +576,7 @@ def __func(ctx, model, func, args, arg, ids):
 
 @cli_rpc.command('fields')
 @click.argument('model', default=None, required=True)
-@click.option('--fields', '-f', multiple=True, type=click.STRING, default='', help="Fields to show")
+@click.option('--fields', '-f', multiple=True, type=click.STRING, default=[], help="Fields to show")
 @click.option('--grep', '-g', type=click.STRING, default=False, help="Grep the result")
 @click.pass_context
 def __fields(ctx, model, fields, grep):
@@ -710,7 +710,7 @@ def shell(ctx):
 
 @cli_rpc.command('xmlid')
 @click.argument('xmlid', type=click.STRING, required=True)
-@click.option('--fields', '-f', multiple=True, type=click.STRING, default='', help="Fields to show")
+@click.option('--fields', '-f', multiple=True, type=click.STRING, default=[], help="Fields to show")
 @click.pass_context
 def __xmlid(ctx, xmlid, fields):
     """Show the related model and ID associated to the given XMLID, also fields if provided"""
