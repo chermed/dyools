@@ -4,7 +4,7 @@ from setuptools import setup
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-version = "0.21.2"
+version = "0.21.3"
 
 setup(
     name="dyools",
@@ -49,16 +49,5 @@ setup(
     ],
     entry_points="""
         [console_scripts]
-        ws_agent=dyools:cli_ws_agent
-        rpc=dyools:cli_rpc
-        tool=dyools:cli_tool
-        xml=dyools:cli_xml
-        etl=dyools:cli_etl
-        po=dyools:cli_po
-        sign=dyools:cli_sign
-        todo=dyools:cli_todo
-        job=dyools:cli_job
-        dhelp=dyools:cli_help
-        deploy=dyools:cli_deploy
     """,
 )

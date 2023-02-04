@@ -1,14 +1,14 @@
-from .cli_deploy import cli_deploy
-from .cli_etl import cli_etl
-from .cli_help import cli_help
-from .cli_job import cli_job
-from .cli_po import cli_po
-from .cli_rpc import cli_rpc
-from .cli_sign import cli_sign
-from .cli_todo import cli_todo
-from .cli_tool import cli_tool
-from .cli_ws_agent import cli_ws_agent
-from .cli_xml import cli_xml
+# from .cli_deploy import cli_deploy
+# from .cli_etl import cli_etl
+# from .cli_help import cli_help
+# from .cli_job import cli_job
+# from .cli_po import cli_po
+# from .cli_rpc import cli_rpc
+# from .cli_sign import cli_sign
+# from .cli_todo import cli_todo
+# from .cli_tool import cli_tool
+# from .cli_ws_agent import cli_ws_agent
+# from .cli_xml import cli_xml
 from .decorators import log, raise_exception
 from .klass_connector import Connector
 from .klass_consumer import Consumer
